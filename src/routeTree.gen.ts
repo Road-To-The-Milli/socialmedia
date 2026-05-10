@@ -13,6 +13,7 @@ import { Route as LoginRouteImport } from './routes/login'
 import { Route as AppRouteImport } from './routes/_app'
 import { Route as AppIndexRouteImport } from './routes/_app.index'
 import { Route as AppTimelineRouteImport } from './routes/_app.timeline'
+import { Route as AppEpisodeEpisodeIdRouteImport } from './routes/_app.episode.$episodeId'
 
 const LoginRoute = LoginRouteImport.update({
   id: '/login',
@@ -33,16 +34,23 @@ const AppTimelineRoute = AppTimelineRouteImport.update({
   path: '/timeline',
   getParentRoute: () => AppRoute,
 } as any)
+const AppEpisodeEpisodeIdRoute = AppEpisodeEpisodeIdRouteImport.update({
+  id: '/episode/$episodeId',
+  path: '/episode/$episodeId',
+  getParentRoute: () => AppRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof AppIndexRoute
   '/login': typeof LoginRoute
   '/timeline': typeof AppTimelineRoute
+  '/episode/$episodeId': typeof AppEpisodeEpisodeIdRoute
 }
 export interface FileRoutesByTo {
   '/login': typeof LoginRoute
   '/timeline': typeof AppTimelineRoute
   '/': typeof AppIndexRoute
+  '/episode/$episodeId': typeof AppEpisodeEpisodeIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -50,13 +58,20 @@ export interface FileRoutesById {
   '/login': typeof LoginRoute
   '/_app/timeline': typeof AppTimelineRoute
   '/_app/': typeof AppIndexRoute
+  '/_app/episode/$episodeId': typeof AppEpisodeEpisodeIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/login' | '/timeline'
+  fullPaths: '/' | '/login' | '/timeline' | '/episode/$episodeId'
   fileRoutesByTo: FileRoutesByTo
-  to: '/login' | '/timeline' | '/'
-  id: '__root__' | '/_app' | '/login' | '/_app/timeline' | '/_app/'
+  to: '/login' | '/timeline' | '/' | '/episode/$episodeId'
+  id:
+    | '__root__'
+    | '/_app'
+    | '/login'
+    | '/_app/timeline'
+    | '/_app/'
+    | '/_app/episode/$episodeId'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -94,17 +109,26 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppTimelineRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/episode/$episodeId': {
+      id: '/_app/episode/$episodeId'
+      path: '/episode/$episodeId'
+      fullPath: '/episode/$episodeId'
+      preLoaderRoute: typeof AppEpisodeEpisodeIdRouteImport
+      parentRoute: typeof AppRoute
+    }
   }
 }
 
 interface AppRouteChildren {
   AppTimelineRoute: typeof AppTimelineRoute
   AppIndexRoute: typeof AppIndexRoute
+  AppEpisodeEpisodeIdRoute: typeof AppEpisodeEpisodeIdRoute
 }
 
 const AppRouteChildren: AppRouteChildren = {
   AppTimelineRoute: AppTimelineRoute,
   AppIndexRoute: AppIndexRoute,
+  AppEpisodeEpisodeIdRoute: AppEpisodeEpisodeIdRoute,
 }
 
 const AppRouteWithChildren = AppRoute._addFileChildren(AppRouteChildren)
