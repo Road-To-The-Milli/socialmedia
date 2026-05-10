@@ -14,6 +14,7 @@ import { Route as AppRouteImport } from './routes/_app'
 import { Route as AppIndexRouteImport } from './routes/_app.index'
 import { Route as AppVoteRouteImport } from './routes/_app.vote'
 import { Route as AppTimelineRouteImport } from './routes/_app.timeline'
+import { Route as AppSyntheseRouteImport } from './routes/_app.synthese'
 import { Route as AppIdeasRouteImport } from './routes/_app.ideas'
 import { Route as AppEpisodeEpisodeIdRouteImport } from './routes/_app.episode.$episodeId'
 
@@ -41,6 +42,11 @@ const AppTimelineRoute = AppTimelineRouteImport.update({
   path: '/timeline',
   getParentRoute: () => AppRoute,
 } as any)
+const AppSyntheseRoute = AppSyntheseRouteImport.update({
+  id: '/synthese',
+  path: '/synthese',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppIdeasRoute = AppIdeasRouteImport.update({
   id: '/ideas',
   path: '/ideas',
@@ -56,6 +62,7 @@ export interface FileRoutesByFullPath {
   '/': typeof AppIndexRoute
   '/login': typeof LoginRoute
   '/ideas': typeof AppIdeasRoute
+  '/synthese': typeof AppSyntheseRoute
   '/timeline': typeof AppTimelineRoute
   '/vote': typeof AppVoteRoute
   '/episode/$episodeId': typeof AppEpisodeEpisodeIdRoute
@@ -63,6 +70,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/login': typeof LoginRoute
   '/ideas': typeof AppIdeasRoute
+  '/synthese': typeof AppSyntheseRoute
   '/timeline': typeof AppTimelineRoute
   '/vote': typeof AppVoteRoute
   '/': typeof AppIndexRoute
@@ -73,6 +81,7 @@ export interface FileRoutesById {
   '/_app': typeof AppRouteWithChildren
   '/login': typeof LoginRoute
   '/_app/ideas': typeof AppIdeasRoute
+  '/_app/synthese': typeof AppSyntheseRoute
   '/_app/timeline': typeof AppTimelineRoute
   '/_app/vote': typeof AppVoteRoute
   '/_app/': typeof AppIndexRoute
@@ -84,16 +93,25 @@ export interface FileRouteTypes {
     | '/'
     | '/login'
     | '/ideas'
+    | '/synthese'
     | '/timeline'
     | '/vote'
     | '/episode/$episodeId'
   fileRoutesByTo: FileRoutesByTo
-  to: '/login' | '/ideas' | '/timeline' | '/vote' | '/' | '/episode/$episodeId'
+  to:
+    | '/login'
+    | '/ideas'
+    | '/synthese'
+    | '/timeline'
+    | '/vote'
+    | '/'
+    | '/episode/$episodeId'
   id:
     | '__root__'
     | '/_app'
     | '/login'
     | '/_app/ideas'
+    | '/_app/synthese'
     | '/_app/timeline'
     | '/_app/vote'
     | '/_app/'
@@ -142,6 +160,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppTimelineRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/synthese': {
+      id: '/_app/synthese'
+      path: '/synthese'
+      fullPath: '/synthese'
+      preLoaderRoute: typeof AppSyntheseRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/_app/ideas': {
       id: '/_app/ideas'
       path: '/ideas'
@@ -161,6 +186,7 @@ declare module '@tanstack/react-router' {
 
 interface AppRouteChildren {
   AppIdeasRoute: typeof AppIdeasRoute
+  AppSyntheseRoute: typeof AppSyntheseRoute
   AppTimelineRoute: typeof AppTimelineRoute
   AppVoteRoute: typeof AppVoteRoute
   AppIndexRoute: typeof AppIndexRoute
@@ -169,6 +195,7 @@ interface AppRouteChildren {
 
 const AppRouteChildren: AppRouteChildren = {
   AppIdeasRoute: AppIdeasRoute,
+  AppSyntheseRoute: AppSyntheseRoute,
   AppTimelineRoute: AppTimelineRoute,
   AppVoteRoute: AppVoteRoute,
   AppIndexRoute: AppIndexRoute,
