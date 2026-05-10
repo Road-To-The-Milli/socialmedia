@@ -1,8 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useStore } from "@/lib/store";
-import { Vote, Trophy } from "lucide-react";
+import { Vote, Trophy, Loader2 } from "lucide-react";
 import { toast } from "sonner";
-import { useState } from "react";
+import { useCastVote, useVotes } from "@/lib/store";
 
 export const Route = createFileRoute("/_app/vote")({
   head: () => ({ meta: [{ title: "Vote final · Nous & Chill" }] }),
@@ -10,24 +9,36 @@ export const Route = createFileRoute("/_app/vote")({
 });
 
 function VotePage() {
-  const { votes, castAbsurdVote } = useStore();
-  const [voted, setVoted] = useState<Record<string, string>>({});
+  const votesQuery = useVotes();
+  const castVote = useCastVote();
+
+  if (votesQuery.isLoading) {
+    return (
+      <div className="min-h-[60vh] flex items-center justify-center">
+        <Loader2 className="w-6 h-6 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  const questions = votesQuery.data ?? [];
 
   return (
     <div className="max-w-3xl mx-auto px-4 sm:px-6 py-10">
       <div className="mb-8 text-center animate-float-in">
         <Trophy className="w-10 h-10 text-accent mx-auto mb-3" />
-        <p className="text-xs uppercase tracking-[0.3em] text-primary font-bold mb-2">🎟 Vote anonyme</p>
+        <p className="text-xs uppercase tracking-[0.3em] text-primary font-bold mb-2">
+          🎟 Vote anonyme
+        </p>
         <h1 className="text-3xl sm:text-5xl font-black tracking-tighter">Le verdict du jury</h1>
         <p className="text-muted-foreground mt-3 max-w-lg mx-auto">
-          Après 1 mois et demi de tournage, le public tranche. Aucune option n'est sérieuse. Toutes comptent.
+          Après 1 mois et demi de tournage, le public tranche. Aucune option n'est sérieuse.
+          Toutes comptent.
         </p>
       </div>
 
       <div className="space-y-6">
-        {votes.map((q, i) => {
-          const total = Object.values(q.votes).reduce((a, b) => a + b, 0);
-          const userChoice = voted[q.id];
+        {questions.map((q, i) => {
+          const userChoice = q.my_choice ?? null;
           return (
             <div
               key={q.id}
@@ -40,21 +51,30 @@ function VotePage() {
               </div>
               <div className="space-y-2">
                 {q.options.map((opt) => {
-                  const count = q.votes[opt] || 0;
-                  const pct = total ? Math.round((count / total) * 100) : 0;
+                  const count = q.results[opt] || 0;
+                  const pct = q.total ? Math.round((count / q.total) * 100) : 0;
                   const isMine = userChoice === opt;
                   return (
                     <button
                       key={opt}
                       onClick={() => {
                         if (userChoice) return;
-                        castAbsurdVote(q.id, opt);
-                        setVoted((v) => ({ ...v, [q.id]: opt }));
-                        toast.success("Vote enregistré (anonymement, promis)");
+                        castVote.mutate(
+                          { questionId: q.id, option: opt },
+                          {
+                            onSuccess: () =>
+                              toast.success("Vote enregistré (anonymement, promis)"),
+                            onError: () => toast.error("Vote impossible pour le moment."),
+                          },
+                        );
                       }}
-                      disabled={!!userChoice}
+                      disabled={Boolean(userChoice) || castVote.isPending}
                       className={`relative w-full text-left p-3 rounded-lg border overflow-hidden transition ${
-                        isMine ? "border-primary" : userChoice ? "border-border opacity-70" : "border-border hover:border-primary"
+                        isMine
+                          ? "border-primary"
+                          : userChoice
+                            ? "border-border opacity-70"
+                            : "border-border hover:border-primary"
                       }`}
                     >
                       {userChoice && (

@@ -1,29 +1,63 @@
 import { createFileRoute, Link, notFound } from "@tanstack/react-router";
-import { useStore } from "@/lib/store";
-import { useAuth } from "@/lib/auth";
 import { useState } from "react";
-import type { EpisodeReview } from "@/lib/types";
-import { Star, ArrowLeft, Music, MapPin, Calendar } from "lucide-react";
+import { Star, ArrowLeft, Music, MapPin, Calendar, Lock, Loader2 } from "lucide-react";
 import { toast } from "sonner";
+import { useAuth } from "@/lib/auth";
+import { useEpisodeReviews, useEpisodes, useSaveReview } from "@/lib/store";
+import type { Review, ReviewDraft, Role, WouldRedo } from "@/lib/types";
 
 export const Route = createFileRoute("/_app/episode/$episodeId")({
   component: EpisodeDetail,
 });
 
+const COUPLE: Role[] = ["samuel", "mathilde"];
+
+const ROLE_LABEL: Record<Role, { label: string; emoji: string }> = {
+  samuel: { label: "Samuel", emoji: "🎬" },
+  mathilde: { label: "Mathilde", emoji: "🌹" },
+  amis_samuel: { label: "Amis de Samuel", emoji: "🍻" },
+  amis_mathilde: { label: "Amis de Mathilde", emoji: "💅" },
+};
+
 function EpisodeDetail() {
   const { episodeId } = Route.useParams();
-  const { episodes, updateEpisodeReview } = useStore();
   const { user } = useAuth();
-  const ep = episodes.find((e) => e.id === episodeId);
+  const episodesQuery = useEpisodes();
+  const reviewsQuery = useEpisodeReviews(episodeId);
+  const saveReview = useSaveReview(episodeId);
+
+  if (episodesQuery.isLoading || reviewsQuery.isLoading) {
+    return (
+      <div className="min-h-[60vh] flex items-center justify-center">
+        <Loader2 className="w-6 h-6 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  const ep = episodesQuery.data?.find((e) => e.id === episodeId);
   if (!ep) throw notFound();
 
-  const canEditAs: ("samuel" | "mathilde") | null =
-    user?.role === "samuel" ? "samuel" : user?.role === "mathilde" ? "mathilde" : null;
+  const reviewsData = reviewsQuery.data;
+  const reviews = reviewsData?.reviews ?? [];
+  const seasonUnlocked = reviewsData?.season_unlocked ?? false;
+  const visibleRatings = reviews.map((r) => r.rating).filter((n) => n > 0);
+  const avg = visibleRatings.length
+    ? visibleRatings.reduce((a, b) => a + b, 0) / visibleRatings.length
+    : null;
+
+  const myRole = user?.role;
+
+  const reviewByRole = (role: Role) => reviews.find((r) => r.author_role === role);
+  const myReview = myRole ? reviews.find((r) => r.author_role === myRole) : undefined;
+  const couplePartner: Role | null =
+    myRole === "samuel" ? "mathilde" : myRole === "mathilde" ? "samuel" : null;
 
   return (
     <div>
       <div className="relative h-[50vh] min-h-[340px] -mt-14">
-        <img src={ep.cover} alt="" className="absolute inset-0 w-full h-full object-cover" />
+        {ep.cover_url && (
+          <img src={ep.cover_url} alt="" className="absolute inset-0 w-full h-full object-cover" />
+        )}
         <div className="absolute inset-0" style={{ background: "var(--gradient-hero)" }} />
         <Link
           to="/timeline"
@@ -45,70 +79,130 @@ function EpisodeDetail() {
               <MapPin className="w-4 h-4" />
               {ep.place}
             </span>
+            {avg !== null && (
+              <span className="inline-flex items-center gap-1">
+                <Star className="w-4 h-4 fill-accent text-accent" />
+                {avg.toFixed(1)}/5
+                {!seasonUnlocked && couplePartner && (
+                  <span className="ml-1 inline-flex items-center text-xs">
+                    <Lock className="w-3 h-3" />
+                  </span>
+                )}
+              </span>
+            )}
           </div>
         </div>
       </div>
 
       <div className="max-w-4xl mx-auto px-4 sm:px-6 py-10 grid md:grid-cols-2 gap-6">
-        <ReviewPanel
-          who="samuel"
-          label="🎬 Le compte rendu de Samuel"
-          review={ep.reviews.samuel}
-          editable={canEditAs === "samuel"}
-          onSave={(r) => {
-            updateEpisodeReview(ep.id, "samuel", r);
-            toast.success("Compte rendu enregistré");
-          }}
-        />
-        <ReviewPanel
-          who="mathilde"
-          label="🌹 Le compte rendu de Mathilde"
-          review={ep.reviews.mathilde}
-          editable={canEditAs === "mathilde"}
-          onSave={(r) => {
-            updateEpisodeReview(ep.id, "mathilde", r);
-            toast.success("Compte rendu enregistré");
-          }}
-        />
+        {COUPLE.map((role) => {
+          const review = reviewByRole(role);
+          const isMine = role === myRole;
+          const editable = isMine;
+          const partnerHidden = !seasonUnlocked && role === couplePartner;
+
+          if (partnerHidden) {
+            return (
+              <LockedReviewPanel
+                key={role}
+                label={`${ROLE_LABEL[role].emoji} Le compte rendu de ${ROLE_LABEL[role].label}`}
+              />
+            );
+          }
+
+          return (
+            <ReviewPanel
+              key={role}
+              label={`${ROLE_LABEL[role].emoji} Le compte rendu de ${ROLE_LABEL[role].label}`}
+              review={review}
+              editable={editable}
+              saving={saveReview.isPending}
+              onSave={(draft) =>
+                saveReview.mutate(draft, {
+                  onSuccess: () => toast.success("Compte rendu enregistré"),
+                  onError: () => toast.error("Échec de l'enregistrement."),
+                })
+              }
+            />
+          );
+        })}
       </div>
+
+      {myReview && !seasonUnlocked && couplePartner && (
+        <p className="max-w-4xl mx-auto px-4 sm:px-6 -mt-4 pb-10 text-center text-xs text-muted-foreground">
+          ✨ Tu as livré ton compte rendu. Celui de {ROLE_LABEL[couplePartner].label} sera révélé
+          à la fin de la saison.
+        </p>
+      )}
     </div>
   );
 }
 
-const empty: EpisodeReview = {
+function LockedReviewPanel({ label }: { label: string }) {
+  return (
+    <div className="bg-card border border-dashed border-border rounded-xl p-6 text-center">
+      <Lock className="w-6 h-6 text-muted-foreground mx-auto mb-2" />
+      <h3 className="font-bold mb-1">{label}</h3>
+      <p className="text-sm text-muted-foreground">
+        🔒 Visible à la fin de la saison. Pas de spoilers.
+      </p>
+    </div>
+  );
+}
+
+const empty: ReviewDraft = {
   rating: 0,
-  favoriteMoment: "",
-  awkwardMoment: "",
-  funnyQuote: "",
+  favorite_moment: "",
+  awkward_moment: "",
+  funny_quote: "",
   summary: "",
-  wouldRedo: "",
+  would_redo: "",
   song: "",
 };
+
+function reviewToDraft(r?: Review): ReviewDraft {
+  if (!r) return empty;
+  return {
+    rating: r.rating,
+    favorite_moment: r.favorite_moment,
+    awkward_moment: r.awkward_moment,
+    funny_quote: r.funny_quote,
+    summary: r.summary,
+    would_redo: r.would_redo,
+    song: r.song,
+  };
+}
 
 function ReviewPanel({
   label,
   review,
   editable,
+  saving,
   onSave,
 }: {
-  who: "samuel" | "mathilde";
   label: string;
-  review?: EpisodeReview;
+  review?: Review;
   editable: boolean;
-  onSave: (r: EpisodeReview) => void;
+  saving: boolean;
+  onSave: (r: ReviewDraft) => void;
 }) {
   const [editing, setEditing] = useState(!review && editable);
-  const [draft, setDraft] = useState<EpisodeReview>(review || empty);
+  const [draft, setDraft] = useState<ReviewDraft>(reviewToDraft(review));
 
   if (!editing) {
     if (!review) {
       return (
         <div className="bg-card border border-dashed border-border rounded-xl p-6 text-center">
           <h3 className="font-bold mb-1">{label}</h3>
-          <p className="text-sm text-muted-foreground mb-3">Pas encore de compte rendu. Suspense.</p>
+          <p className="text-sm text-muted-foreground mb-3">
+            Pas encore de compte rendu. Suspense.
+          </p>
           {editable && (
             <button
-              onClick={() => setEditing(true)}
+              onClick={() => {
+                setDraft(empty);
+                setEditing(true);
+              }}
               className="text-sm bg-primary text-primary-foreground px-4 py-2 rounded-md font-semibold"
             >
               ✍ Écrire le mien
@@ -122,19 +216,27 @@ function ReviewPanel({
         <div className="flex items-center justify-between mb-3">
           <h3 className="font-bold">{label}</h3>
           {editable && (
-            <button onClick={() => setEditing(true)} className="text-xs text-muted-foreground hover:text-foreground">
+            <button
+              onClick={() => {
+                setDraft(reviewToDraft(review));
+                setEditing(true);
+              }}
+              className="text-xs text-muted-foreground hover:text-foreground"
+            >
               modifier
             </button>
           )}
         </div>
         <Stars value={review.rating} />
-        <Field label="Moment préféré">{review.favoriteMoment}</Field>
-        <Field label="Moment gênant">{review.awkwardMoment}</Field>
-        <Field label="Citation drôle">{review.funnyQuote}</Field>
+        <Field label="Moment préféré">{review.favorite_moment}</Field>
+        <Field label="Moment gênant">{review.awkward_moment}</Field>
+        <Field label="Citation drôle">{review.funny_quote}</Field>
         <Field label="Résumé">{review.summary}</Field>
         <Field label="On le referait ?">
-          {review.wouldRedo
-            ? { yes: "✅ Oui clairement", no: "❌ Non merci", maybe: "🤷 Peut-être" }[review.wouldRedo]
+          {review.would_redo
+            ? { yes: "✅ Oui clairement", no: "❌ Non merci", maybe: "🤷 Peut-être" }[
+                review.would_redo
+              ]
             : "—"}
         </Field>
         {review.song && (
@@ -154,42 +256,71 @@ function ReviewPanel({
   return (
     <div className="bg-card border border-primary rounded-xl p-5 shadow-glow">
       <h3 className="font-bold mb-3">{label}</h3>
-      <label className="block text-xs uppercase tracking-wider text-muted-foreground mb-1">Note</label>
+      <label className="block text-xs uppercase tracking-wider text-muted-foreground mb-1">
+        Note
+      </label>
       <Stars value={draft.rating} editable onChange={(v) => setDraft({ ...draft, rating: v })} />
-      <Input label="Moment préféré" value={draft.favoriteMoment} onChange={(v) => setDraft({ ...draft, favoriteMoment: v })} />
-      <Input label="Moment gênant" value={draft.awkwardMoment} onChange={(v) => setDraft({ ...draft, awkwardMoment: v })} />
-      <Input label="Citation drôle" value={draft.funnyQuote} onChange={(v) => setDraft({ ...draft, funnyQuote: v })} />
-      <Textarea label="Résumé libre" value={draft.summary} onChange={(v) => setDraft({ ...draft, summary: v })} />
-      <label className="block text-xs uppercase tracking-wider text-muted-foreground mb-1 mt-3">On le referait ?</label>
+      <Input
+        label="Moment préféré"
+        value={draft.favorite_moment}
+        onChange={(v) => setDraft({ ...draft, favorite_moment: v })}
+      />
+      <Input
+        label="Moment gênant"
+        value={draft.awkward_moment}
+        onChange={(v) => setDraft({ ...draft, awkward_moment: v })}
+      />
+      <Input
+        label="Citation drôle"
+        value={draft.funny_quote}
+        onChange={(v) => setDraft({ ...draft, funny_quote: v })}
+      />
+      <Textarea
+        label="Résumé libre"
+        value={draft.summary}
+        onChange={(v) => setDraft({ ...draft, summary: v })}
+      />
+      <label className="block text-xs uppercase tracking-wider text-muted-foreground mb-1 mt-3">
+        On le referait ?
+      </label>
       <div className="flex gap-2 mb-3">
-        {([
-          ["yes", "✅ Oui"],
-          ["maybe", "🤷 Peut-être"],
-          ["no", "❌ Non"],
-        ] as const).map(([v, l]) => (
+        {(
+          [
+            ["yes", "✅ Oui"],
+            ["maybe", "🤷 Peut-être"],
+            ["no", "❌ Non"],
+          ] as const
+        ).map(([v, l]) => (
           <button
             key={v}
-            onClick={() => setDraft({ ...draft, wouldRedo: v })}
+            onClick={() => setDraft({ ...draft, would_redo: v as WouldRedo })}
             className={`text-xs px-3 py-1.5 rounded-full border ${
-              draft.wouldRedo === v ? "bg-primary border-primary text-primary-foreground" : "border-border"
+              draft.would_redo === v
+                ? "bg-primary border-primary text-primary-foreground"
+                : "border-border"
             }`}
           >
             {l}
           </button>
         ))}
       </div>
-      <Input label="Lien Spotify / YouTube" value={draft.song} onChange={(v) => setDraft({ ...draft, song: v })} />
+      <Input
+        label="Lien Spotify / YouTube"
+        value={draft.song}
+        onChange={(v) => setDraft({ ...draft, song: v })}
+      />
       <div className="flex gap-2 mt-4">
         <button
-          onClick={() => {
-            onSave(draft);
-            setEditing(false);
-          }}
-          className="flex-1 bg-primary text-primary-foreground font-bold py-2 rounded-md hover:bg-primary/90"
+          onClick={() => onSave(draft)}
+          disabled={saving}
+          className="flex-1 bg-primary text-primary-foreground font-bold py-2 rounded-md hover:bg-primary/90 disabled:opacity-40"
         >
-          Enregistrer
+          {saving ? "Enregistrement…" : "Enregistrer"}
         </button>
-        <button onClick={() => setEditing(false)} className="px-4 py-2 text-sm text-muted-foreground">
+        <button
+          onClick={() => setEditing(false)}
+          className="px-4 py-2 text-sm text-muted-foreground"
+        >
           Annuler
         </button>
       </div>
@@ -201,15 +332,27 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
   return (
     <div className="mt-3">
       <p className="text-xs uppercase tracking-wider text-muted-foreground">{label}</p>
-      <p className="text-sm mt-0.5">{children || <span className="text-muted-foreground">—</span>}</p>
+      <p className="text-sm mt-0.5">
+        {children || <span className="text-muted-foreground">—</span>}
+      </p>
     </div>
   );
 }
 
-function Input({ label, value, onChange }: { label: string; value: string; onChange: (v: string) => void }) {
+function Input({
+  label,
+  value,
+  onChange,
+}: {
+  label: string;
+  value: string;
+  onChange: (v: string) => void;
+}) {
   return (
     <div className="mt-3">
-      <label className="block text-xs uppercase tracking-wider text-muted-foreground mb-1">{label}</label>
+      <label className="block text-xs uppercase tracking-wider text-muted-foreground mb-1">
+        {label}
+      </label>
       <input
         value={value}
         onChange={(e) => onChange(e.target.value)}
@@ -219,10 +362,20 @@ function Input({ label, value, onChange }: { label: string; value: string; onCha
   );
 }
 
-function Textarea({ label, value, onChange }: { label: string; value: string; onChange: (v: string) => void }) {
+function Textarea({
+  label,
+  value,
+  onChange,
+}: {
+  label: string;
+  value: string;
+  onChange: (v: string) => void;
+}) {
   return (
     <div className="mt-3">
-      <label className="block text-xs uppercase tracking-wider text-muted-foreground mb-1">{label}</label>
+      <label className="block text-xs uppercase tracking-wider text-muted-foreground mb-1">
+        {label}
+      </label>
       <textarea
         value={value}
         onChange={(e) => onChange(e.target.value)}
@@ -253,7 +406,9 @@ function Stars({
           className={editable ? "cursor-pointer hover:scale-110 transition" : "cursor-default"}
         >
           <Star
-            className={`w-6 h-6 ${n <= value ? "fill-accent text-accent" : "text-muted-foreground"}`}
+            className={`w-6 h-6 ${
+              n <= value ? "fill-accent text-accent" : "text-muted-foreground"
+            }`}
           />
         </button>
       ))}

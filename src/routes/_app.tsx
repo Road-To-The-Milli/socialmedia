@@ -4,7 +4,7 @@ import { NavBar } from "@/components/NavBar";
 export const Route = createFileRoute("/_app")({
   beforeLoad: ({ location }) => {
     if (typeof window === "undefined") return;
-    const raw = localStorage.getItem("nous-and-chill-user");
+    const raw = localStorage.getItem("nc_session");
     if (!raw) {
       throw redirect({ to: "/login", search: { redirect: location.href } });
     }

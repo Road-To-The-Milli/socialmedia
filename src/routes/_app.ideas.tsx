@@ -1,10 +1,14 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useStore } from "@/lib/store";
-import { useAuth } from "@/lib/auth";
 import { useState } from "react";
-import type { IdeaStatus } from "@/lib/types";
-import { ThumbsUp, ThumbsDown, Plus, Sparkles } from "lucide-react";
+import { ThumbsUp, ThumbsDown, Plus, Sparkles, Loader2 } from "lucide-react";
 import { toast } from "sonner";
+import {
+  useCreateIdea,
+  useIdeas,
+  useSetIdeaStatus,
+  useVoteIdea,
+} from "@/lib/store";
+import type { IdeaStatus } from "@/lib/types";
 
 export const Route = createFileRoute("/_app/ideas")({
   head: () => ({ meta: [{ title: "Idées · Nous & Chill" }] }),
@@ -19,31 +23,59 @@ const STATUSES: { value: IdeaStatus; label: string; emoji: string }[] = [
 ];
 
 function IdeasPage() {
-  const { ideas, addIdea, toggleLike, setIdeaStatus } = useStore();
-  const { user } = useAuth();
+  const ideasQuery = useIdeas();
+  const createIdea = useCreateIdea();
+  const voteIdea = useVoteIdea();
+  const setStatus = useSetIdeaStatus();
   const [title, setTitle] = useState("");
   const [desc, setDesc] = useState("");
   const [filter, setFilter] = useState<IdeaStatus | "all">("all");
 
+  const ideas = ideasQuery.data ?? [];
   const filtered = filter === "all" ? ideas : ideas.filter((i) => i.status === filter);
 
   const submit = () => {
-    if (!title.trim() || !user) return;
-    addIdea({ title: title.trim(), description: desc.trim(), proposedBy: user.name });
-    setTitle("");
-    setDesc("");
-    toast.success("Nouvelle idée pitchée 🎬");
+    if (!title.trim()) return;
+    createIdea.mutate(
+      { title: title.trim(), description: desc.trim() },
+      {
+        onSuccess: () => {
+          setTitle("");
+          setDesc("");
+          toast.success("Nouvelle idée pitchée 🎬");
+        },
+        onError: () => toast.error("Impossible d'envoyer l'idée."),
+      },
+    );
   };
+
+  const onVote = (id: string, kind: "like" | "dislike", currentVote: "like" | "dislike" | null | undefined) => {
+    const next = currentVote === kind ? "clear" : kind;
+    voteIdea.mutate({ id, kind: next });
+  };
+
+  if (ideasQuery.isLoading) {
+    return (
+      <div className="min-h-[60vh] flex items-center justify-center">
+        <Loader2 className="w-6 h-6 animate-spin text-primary" />
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-5xl mx-auto px-4 sm:px-6 py-10">
       <div className="mb-8 text-center animate-float-in">
-        <p className="text-xs uppercase tracking-[0.3em] text-primary font-bold mb-2">💡 La writers' room</p>
-        <h1 className="text-3xl sm:text-5xl font-black tracking-tighter">Pitch les prochains épisodes</h1>
-        <p className="text-muted-foreground mt-3">Like, dislike, programme. Démocratie absolue.</p>
+        <p className="text-xs uppercase tracking-[0.3em] text-primary font-bold mb-2">
+          💡 La writers' room
+        </p>
+        <h1 className="text-3xl sm:text-5xl font-black tracking-tighter">
+          Pitch les prochains épisodes
+        </h1>
+        <p className="text-muted-foreground mt-3">
+          Like, dislike, programme. Démocratie absolue.
+        </p>
       </div>
 
-      {/* New idea */}
       <div className="bg-card border border-border rounded-2xl p-5 mb-8 shadow-poster">
         <h2 className="font-bold mb-3 flex items-center gap-2">
           <Plus className="w-4 h-4 text-primary" /> Nouvelle idée
@@ -65,21 +97,22 @@ function IdeasPage() {
         />
         <button
           onClick={submit}
-          disabled={!title.trim()}
+          disabled={!title.trim() || createIdea.isPending}
           className="bg-primary text-primary-foreground px-4 py-2 rounded-md font-semibold disabled:opacity-30"
         >
-          Pitcher
+          {createIdea.isPending ? "Envoi…" : "Pitcher"}
         </button>
       </div>
 
-      {/* Filters */}
       <div className="flex gap-2 overflow-x-auto scrollbar-hide mb-6">
         {[{ value: "all" as const, label: "Tout", emoji: "✨" }, ...STATUSES].map((s) => (
           <button
             key={s.value}
             onClick={() => setFilter(s.value)}
             className={`text-xs px-3 py-1.5 rounded-full border whitespace-nowrap ${
-              filter === s.value ? "bg-primary border-primary text-primary-foreground" : "border-border text-muted-foreground"
+              filter === s.value
+                ? "bg-primary border-primary text-primary-foreground"
+                : "border-border text-muted-foreground"
             }`}
           >
             {s.emoji} {s.label}
@@ -87,11 +120,10 @@ function IdeasPage() {
         ))}
       </div>
 
-      {/* Grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         {filtered.map((i, idx) => {
-          const liked = user ? i.likes.includes(user.name) : false;
-          const disliked = user ? i.dislikes.includes(user.name) : false;
+          const liked = i.my_vote === "like";
+          const disliked = i.my_vote === "dislike";
           return (
             <div
               key={i.id}
@@ -106,17 +138,23 @@ function IdeasPage() {
               <div className="flex items-center justify-between">
                 <div className="flex gap-2">
                   <button
-                    onClick={() => user && toggleLike(i.id, user.name, "like")}
+                    onClick={() => onVote(i.id, "like", i.my_vote)}
+                    disabled={voteIdea.isPending}
                     className={`flex items-center gap-1 text-xs px-3 py-1.5 rounded-full border transition ${
-                      liked ? "bg-accent text-accent-foreground border-accent" : "border-border hover:border-accent"
+                      liked
+                        ? "bg-accent text-accent-foreground border-accent"
+                        : "border-border hover:border-accent"
                     }`}
                   >
                     <ThumbsUp className="w-3 h-3" /> {i.likes.length}
                   </button>
                   <button
-                    onClick={() => user && toggleLike(i.id, user.name, "dislike")}
+                    onClick={() => onVote(i.id, "dislike", i.my_vote)}
+                    disabled={voteIdea.isPending}
                     className={`flex items-center gap-1 text-xs px-3 py-1.5 rounded-full border transition ${
-                      disliked ? "bg-destructive text-destructive-foreground border-destructive" : "border-border hover:border-destructive"
+                      disliked
+                        ? "bg-destructive text-destructive-foreground border-destructive"
+                        : "border-border hover:border-destructive"
                     }`}
                   >
                     <ThumbsDown className="w-3 h-3" /> {i.dislikes.length}
@@ -124,7 +162,10 @@ function IdeasPage() {
                 </div>
                 <select
                   value={i.status}
-                  onChange={(e) => setIdeaStatus(i.id, e.target.value as IdeaStatus)}
+                  onChange={(e) =>
+                    setStatus.mutate({ id: i.id, status: e.target.value as IdeaStatus })
+                  }
+                  disabled={setStatus.isPending}
                   className="text-xs bg-input/50 border border-border rounded-md px-2 py-1.5"
                 >
                   {STATUSES.map((s) => (
@@ -135,7 +176,7 @@ function IdeasPage() {
                 </select>
               </div>
               <p className="text-[10px] uppercase tracking-wider text-muted-foreground mt-3">
-                Pitché par {i.proposedBy}
+                Pitché par {i.proposed_by_name}
               </p>
             </div>
           );
@@ -160,7 +201,9 @@ function Badge({ status }: { status: IdeaStatus }) {
     done: "bg-muted text-muted-foreground",
   };
   return (
-    <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold uppercase tracking-wider ${colors[status]}`}>
+    <span
+      className={`text-[10px] px-2 py-0.5 rounded-full font-bold uppercase tracking-wider ${colors[status]}`}
+    >
       {s.emoji} {s.label}
     </span>
   );

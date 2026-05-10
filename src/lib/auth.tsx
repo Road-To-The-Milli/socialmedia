@@ -1,47 +1,78 @@
-import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
-import type { Role, User } from "./types";
-
-const KEY = "nous-and-chill-user";
-
-export const ROLES: { role: Role; name: string; emoji: string; color: string }[] = [
-  { role: "samuel", name: "Samuel", emoji: "🎬", color: "from-red-600 to-red-800" },
-  { role: "mathilde", name: "Mathilde", emoji: "🌹", color: "from-pink-500 to-rose-700" },
-  { role: "amis_samuel", name: "Amis de Samuel", emoji: "🍻", color: "from-amber-500 to-orange-700" },
-  { role: "amis_mathilde", name: "Amis de Mathilde", emoji: "💅", color: "from-purple-500 to-fuchsia-700" },
-];
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useState,
+  type ReactNode,
+} from "react";
+import { api, clearSession, readSession, writeSession, ApiError } from "./api";
+import type { Session, User } from "./types";
 
 interface AuthCtx {
   user: User | null;
-  login: (role: Role, name?: string) => void;
-  logout: () => void;
+  loading: boolean;
+  requestMagicLink: (email: string) => Promise<void>;
+  verifyMagicLink: (token: string) => Promise<User>;
+  logout: () => Promise<void>;
+  refresh: () => Promise<User | null>;
 }
 
 const Ctx = createContext<AuthCtx | null>(null);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
+  const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    if (typeof window === "undefined") return;
+  const refresh = useCallback(async (): Promise<User | null> => {
+    const stored = readSession();
+    if (!stored) {
+      setUser(null);
+      return null;
+    }
     try {
-      const raw = localStorage.getItem(KEY);
-      if (raw) setUser(JSON.parse(raw));
-    } catch {}
+      const res = await api.post<{ user: User }>("/auth/me");
+      setUser(res.user);
+      return res.user;
+    } catch (err) {
+      if (err instanceof ApiError && err.status === 401) {
+        clearSession();
+      }
+      setUser(null);
+      return null;
+    }
   }, []);
 
-  const login = (role: Role, name?: string) => {
-    const fallback = ROLES.find((r) => r.role === role)?.name ?? "Anonyme";
-    const u: User = { role, name: name?.trim() || fallback };
-    setUser(u);
-    if (typeof window !== "undefined") localStorage.setItem(KEY, JSON.stringify(u));
-  };
+  useEffect(() => {
+    void refresh().finally(() => setLoading(false));
+  }, [refresh]);
 
-  const logout = () => {
+  const requestMagicLink = useCallback(async (email: string) => {
+    await api.post<{ ok: true }>("/auth/request", { email });
+  }, []);
+
+  const verifyMagicLink = useCallback(async (token: string): Promise<User> => {
+    const res = await api.post<Session>("/auth/verify", { token });
+    writeSession({ session_token: res.session_token, user: res.user });
+    setUser(res.user);
+    return res.user;
+  }, []);
+
+  const logout = useCallback(async () => {
+    try {
+      await api.post("/auth/logout");
+    } catch {
+      // Ignore network/server failures — we always clear locally.
+    }
+    clearSession();
     setUser(null);
-    if (typeof window !== "undefined") localStorage.removeItem(KEY);
-  };
+  }, []);
 
-  return <Ctx.Provider value={{ user, login, logout }}>{children}</Ctx.Provider>;
+  return (
+    <Ctx.Provider value={{ user, loading, requestMagicLink, verifyMagicLink, logout, refresh }}>
+      {children}
+    </Ctx.Provider>
+  );
 }
 
 export function useAuth() {

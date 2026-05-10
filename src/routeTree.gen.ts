@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as AppRouteImport } from './routes/_app'
 import { Route as AppIndexRouteImport } from './routes/_app.index'
+import { Route as AuthCallbackRouteImport } from './routes/auth.callback'
 import { Route as AppVoteRouteImport } from './routes/_app.vote'
 import { Route as AppTimelineRouteImport } from './routes/_app.timeline'
 import { Route as AppSyntheseRouteImport } from './routes/_app.synthese'
@@ -31,6 +32,11 @@ const AppIndexRoute = AppIndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => AppRoute,
+} as any)
+const AuthCallbackRoute = AuthCallbackRouteImport.update({
+  id: '/auth/callback',
+  path: '/auth/callback',
+  getParentRoute: () => rootRouteImport,
 } as any)
 const AppVoteRoute = AppVoteRouteImport.update({
   id: '/vote',
@@ -65,6 +71,7 @@ export interface FileRoutesByFullPath {
   '/synthese': typeof AppSyntheseRoute
   '/timeline': typeof AppTimelineRoute
   '/vote': typeof AppVoteRoute
+  '/auth/callback': typeof AuthCallbackRoute
   '/episode/$episodeId': typeof AppEpisodeEpisodeIdRoute
 }
 export interface FileRoutesByTo {
@@ -73,6 +80,7 @@ export interface FileRoutesByTo {
   '/synthese': typeof AppSyntheseRoute
   '/timeline': typeof AppTimelineRoute
   '/vote': typeof AppVoteRoute
+  '/auth/callback': typeof AuthCallbackRoute
   '/': typeof AppIndexRoute
   '/episode/$episodeId': typeof AppEpisodeEpisodeIdRoute
 }
@@ -84,6 +92,7 @@ export interface FileRoutesById {
   '/_app/synthese': typeof AppSyntheseRoute
   '/_app/timeline': typeof AppTimelineRoute
   '/_app/vote': typeof AppVoteRoute
+  '/auth/callback': typeof AuthCallbackRoute
   '/_app/': typeof AppIndexRoute
   '/_app/episode/$episodeId': typeof AppEpisodeEpisodeIdRoute
 }
@@ -96,6 +105,7 @@ export interface FileRouteTypes {
     | '/synthese'
     | '/timeline'
     | '/vote'
+    | '/auth/callback'
     | '/episode/$episodeId'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -104,6 +114,7 @@ export interface FileRouteTypes {
     | '/synthese'
     | '/timeline'
     | '/vote'
+    | '/auth/callback'
     | '/'
     | '/episode/$episodeId'
   id:
@@ -114,6 +125,7 @@ export interface FileRouteTypes {
     | '/_app/synthese'
     | '/_app/timeline'
     | '/_app/vote'
+    | '/auth/callback'
     | '/_app/'
     | '/_app/episode/$episodeId'
   fileRoutesById: FileRoutesById
@@ -121,6 +133,7 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   AppRoute: typeof AppRouteWithChildren
   LoginRoute: typeof LoginRoute
+  AuthCallbackRoute: typeof AuthCallbackRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -145,6 +158,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/'
       preLoaderRoute: typeof AppIndexRouteImport
       parentRoute: typeof AppRoute
+    }
+    '/auth/callback': {
+      id: '/auth/callback'
+      path: '/auth/callback'
+      fullPath: '/auth/callback'
+      preLoaderRoute: typeof AuthCallbackRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/_app/vote': {
       id: '/_app/vote'
@@ -207,6 +227,7 @@ const AppRouteWithChildren = AppRoute._addFileChildren(AppRouteChildren)
 const rootRouteChildren: RootRouteChildren = {
   AppRoute: AppRouteWithChildren,
   LoginRoute: LoginRoute,
+  AuthCallbackRoute: AuthCallbackRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

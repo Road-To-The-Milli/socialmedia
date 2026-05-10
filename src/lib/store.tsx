@@ -1,117 +1,188 @@
-import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
-import type { Episode, Idea, AbsurdVote, EpisodeReview } from "./types";
-import { seedEpisodes, seedIdeas, seedAbsurdVotes } from "./mock-data";
+import {
+  useMutation,
+  useQuery,
+  useQueryClient,
+  type UseQueryResult,
+} from "@tanstack/react-query";
+import { useEffect } from "react";
+import { api } from "./api";
+import type {
+  Episode,
+  Idea,
+  IdeaStatus,
+  ReviewDraft,
+  ReviewsResponse,
+  Synthese,
+  VoteQuestion,
+} from "./types";
 
 /**
- * Data layer abstraction. Currently backed by localStorage.
- * Swap implementations here later (Airtable, Supabase, n8n) without touching UI.
+ * Server state for Nous & Chill.
+ *
+ * The local-storage cache that lived here previously is gone — every read
+ * goes through n8n, and the season-end privacy gate is enforced server-side.
+ * Anonymous absurd-vote choices are still tracked in localStorage purely to
+ * stop the same browser from voting twice and to highlight the option the
+ * user picked on reload.
  */
 
-const KEY = "nous-and-chill-data-v1";
+const VOTE_LS_KEY = "nc_votes";
 
-interface DataState {
-  episodes: Episode[];
-  ideas: Idea[];
-  votes: AbsurdVote[];
-}
-
-interface StoreContextValue extends DataState {
-  updateEpisodeReview: (epId: string, who: "samuel" | "mathilde", review: EpisodeReview) => void;
-  addIdea: (idea: Omit<Idea, "id" | "createdAt" | "likes" | "dislikes" | "status">) => void;
-  toggleLike: (ideaId: string, user: string, kind: "like" | "dislike") => void;
-  setIdeaStatus: (ideaId: string, status: Idea["status"]) => void;
-  castAbsurdVote: (voteId: string, option: string) => void;
-  reset: () => void;
-}
-
-const StoreContext = createContext<StoreContextValue | null>(null);
-
-function load(): DataState {
-  if (typeof window === "undefined") {
-    return { episodes: seedEpisodes, ideas: seedIdeas, votes: seedAbsurdVotes };
-  }
+function readLocalVotes(): Record<string, string> {
+  if (typeof window === "undefined") return {};
   try {
-    const raw = localStorage.getItem(KEY);
-    if (raw) return JSON.parse(raw);
-  } catch {}
-  return { episodes: seedEpisodes, ideas: seedIdeas, votes: seedAbsurdVotes };
+    const raw = localStorage.getItem(VOTE_LS_KEY);
+    return raw ? (JSON.parse(raw) as Record<string, string>) : {};
+  } catch {
+    return {};
+  }
 }
 
-export function StoreProvider({ children }: { children: ReactNode }) {
-  const [state, setState] = useState<DataState>(() => ({
-    episodes: seedEpisodes,
-    ideas: seedIdeas,
-    votes: seedAbsurdVotes,
-  }));
+function writeLocalVotes(map: Record<string, string>): void {
+  if (typeof window === "undefined") return;
+  localStorage.setItem(VOTE_LS_KEY, JSON.stringify(map));
+}
 
+export const queryKeys = {
+  episodes: ["episodes"] as const,
+  episodeReviews: (id: string) => ["episodes", id, "reviews"] as const,
+  ideas: ["ideas"] as const,
+  votes: ["votes"] as const,
+  synthese: ["synthese"] as const,
+};
+
+export function useEpisodes(): UseQueryResult<Episode[]> {
+  return useQuery({
+    queryKey: queryKeys.episodes,
+    queryFn: async () => {
+      const res = await api.get<{ episodes: Episode[] }>("/episodes");
+      return [...res.episodes].sort((a, b) => a.number - b.number);
+    },
+  });
+}
+
+export function useEpisodeReviews(episodeId: string | undefined) {
+  return useQuery({
+    queryKey: episodeId ? queryKeys.episodeReviews(episodeId) : ["episodes", "_", "reviews"],
+    queryFn: () => api.get<ReviewsResponse>(`/episodes/${episodeId}/reviews`),
+    enabled: Boolean(episodeId),
+  });
+}
+
+export function useSaveReview(episodeId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (draft: ReviewDraft) =>
+      api.post<{ review: unknown }>(`/episodes/${episodeId}/reviews`, draft),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: queryKeys.episodeReviews(episodeId) });
+      void qc.invalidateQueries({ queryKey: queryKeys.episodes });
+    },
+  });
+}
+
+export function useIdeas(): UseQueryResult<Idea[]> {
+  return useQuery({
+    queryKey: queryKeys.ideas,
+    queryFn: async () => {
+      const res = await api.get<{ ideas: Idea[] }>("/ideas");
+      return res.ideas;
+    },
+  });
+}
+
+export function useCreateIdea() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (input: { title: string; description: string }) =>
+      api.post<{ idea: Idea }>("/ideas", input),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: queryKeys.ideas });
+    },
+  });
+}
+
+export function useVoteIdea() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, kind }: { id: string; kind: "like" | "dislike" | "clear" }) =>
+      api.post<{ idea: Idea }>(`/ideas/${id}/vote`, { kind }),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: queryKeys.ideas });
+    },
+  });
+}
+
+export function useSetIdeaStatus() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, status }: { id: string; status: IdeaStatus }) =>
+      api.patch<{ idea: Idea }>(`/ideas/${id}/status`, { status }),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: queryKeys.ideas });
+    },
+  });
+}
+
+export function useVotes() {
+  return useQuery({
+    queryKey: queryKeys.votes,
+    queryFn: async () => {
+      const res = await api.get<{ questions: VoteQuestion[] }>("/votes");
+      const local = readLocalVotes();
+      return res.questions.map((q) => ({
+        ...q,
+        my_choice: q.my_choice ?? local[q.id] ?? null,
+      }));
+    },
+  });
+}
+
+export function useCastVote() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ questionId, option }: { questionId: string; option: string }) => {
+      await api.post<{ ok: true }>(`/votes/${questionId}`, { option });
+      const map = readLocalVotes();
+      map[questionId] = option;
+      writeLocalVotes(map);
+      return { questionId, option };
+    },
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: queryKeys.votes });
+    },
+  });
+}
+
+export function useSynthese(): UseQueryResult<Synthese> {
+  return useQuery({
+    queryKey: queryKeys.synthese,
+    queryFn: () => api.get<Synthese>("/synthese"),
+  });
+}
+
+/**
+ * Convenience: derive `season_unlocked` from the episode-reviews payload of
+ * any episode that has already been fetched. Falls back to `false` so the UI
+ * stays gated until we hear otherwise from the server.
+ */
+export function useSeasonUnlocked(episodeId: string | undefined): boolean {
+  const qc = useQueryClient();
+  const data = episodeId
+    ? qc.getQueryData<ReviewsResponse>(queryKeys.episodeReviews(episodeId))
+    : undefined;
+  return data?.season_unlocked ?? false;
+}
+
+/**
+ * Backward-compatible wrapper kept so __root.tsx can still mount a
+ * "data layer" provider. TanStack Query is the real provider — this just
+ * hydrates anonymous vote state on the client.
+ */
+export function StoreProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
-    setState(load());
+    // Touch localStorage once so SSR/CSR diff stays stable.
+    readLocalVotes();
   }, []);
-
-  useEffect(() => {
-    if (typeof window !== "undefined") {
-      localStorage.setItem(KEY, JSON.stringify(state));
-    }
-  }, [state]);
-
-  const value: StoreContextValue = {
-    ...state,
-    updateEpisodeReview: (epId, who, review) =>
-      setState((s) => ({
-        ...s,
-        episodes: s.episodes.map((e) =>
-          e.id === epId
-            ? { ...e, reviews: { ...e.reviews, [who]: { ...review, submittedAt: new Date().toISOString() } } }
-            : e,
-        ),
-      })),
-    addIdea: (idea) =>
-      setState((s) => ({
-        ...s,
-        ideas: [
-          {
-            ...idea,
-            id: `id-${Date.now()}`,
-            createdAt: new Date().toISOString(),
-            likes: [],
-            dislikes: [],
-            status: "voting",
-          },
-          ...s.ideas,
-        ],
-      })),
-    toggleLike: (ideaId, user, kind) =>
-      setState((s) => ({
-        ...s,
-        ideas: s.ideas.map((i) => {
-          if (i.id !== ideaId) return i;
-          const likes = i.likes.filter((u) => u !== user);
-          const dislikes = i.dislikes.filter((u) => u !== user);
-          if (kind === "like" && !i.likes.includes(user)) likes.push(user);
-          if (kind === "dislike" && !i.dislikes.includes(user)) dislikes.push(user);
-          return { ...i, likes, dislikes };
-        }),
-      })),
-    setIdeaStatus: (ideaId, status) =>
-      setState((s) => ({
-        ...s,
-        ideas: s.ideas.map((i) => (i.id === ideaId ? { ...i, status } : i)),
-      })),
-    castAbsurdVote: (voteId, option) =>
-      setState((s) => ({
-        ...s,
-        votes: s.votes.map((v) =>
-          v.id === voteId ? { ...v, votes: { ...v.votes, [option]: (v.votes[option] || 0) + 1 } } : v,
-        ),
-      })),
-    reset: () => setState({ episodes: seedEpisodes, ideas: seedIdeas, votes: seedAbsurdVotes }),
-  };
-
-  return <StoreContext.Provider value={value}>{children}</StoreContext.Provider>;
-}
-
-export function useStore() {
-  const ctx = useContext(StoreContext);
-  if (!ctx) throw new Error("useStore must be used within StoreProvider");
-  return ctx;
+  return <>{children}</>;
 }

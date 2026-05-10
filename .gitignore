@@ -20,6 +20,13 @@ dist-ssr
 .wrangler/
 .dev.vars
 
+# Env
+.env
+.env.local
+
+# Local-only design handoff bundle (kept on disk, not in git)
+_design_handoff/
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json

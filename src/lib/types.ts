@@ -1,34 +1,56 @@
 export type Role = "samuel" | "mathilde" | "amis_samuel" | "amis_mathilde";
 
 export interface User {
+  id: string;
   name: string;
   role: Role;
 }
 
-export interface EpisodeReview {
-  rating: number; // 1-5
-  favoriteMoment: string;
-  awkwardMoment: string;
-  funnyQuote: string;
-  summary: string;
-  wouldRedo: "yes" | "no" | "maybe" | "";
-  song: string; // url
-  submittedAt?: string;
+export interface Session {
+  session_token: string;
+  user: User;
 }
 
 export interface Episode {
   id: string;
-  number: number; // S01E0X
+  number: number;
   title: string;
-  date: string; // ISO
+  date: string;
   place: string;
-  cover?: string; // image url
-  audios?: string[];
-  photos?: string[];
-  reviews: {
-    samuel?: EpisodeReview;
-    mathilde?: EpisodeReview;
-  };
+  duration?: string;
+  tags?: string[];
+  cover_url?: string;
+}
+
+export type WouldRedo = "yes" | "no" | "maybe" | "";
+
+export interface Review {
+  id: string;
+  author_role: Role;
+  author_name: string;
+  rating: number;
+  favorite_moment: string;
+  awkward_moment: string;
+  funny_quote: string;
+  summary: string;
+  would_redo: WouldRedo;
+  song: string;
+  updated_at?: string;
+}
+
+export interface ReviewDraft {
+  rating: number;
+  favorite_moment: string;
+  awkward_moment: string;
+  funny_quote: string;
+  summary: string;
+  would_redo: WouldRedo;
+  song: string;
+}
+
+export interface ReviewsResponse {
+  reviews: Review[];
+  season_unlocked: boolean;
 }
 
 export type IdeaStatus = "voting" | "selected" | "scheduled" | "done";
@@ -37,16 +59,27 @@ export interface Idea {
   id: string;
   title: string;
   description: string;
-  proposedBy: string;
+  proposed_by_id: string;
+  proposed_by_name: string;
   status: IdeaStatus;
-  likes: string[]; // user names
+  likes: string[];
   dislikes: string[];
-  createdAt: string;
+  my_vote?: "like" | "dislike" | null;
 }
 
-export interface AbsurdVote {
+export interface VoteQuestion {
   id: string;
   question: string;
   options: string[];
-  votes: Record<string, number>; // option -> count
+  results: Record<string, number>;
+  total: number;
+  my_choice?: string | null;
+}
+
+export interface Synthese {
+  body_md: string | null;
+  generated_at?: string;
+  avg_rating?: number;
+  best_episode_id?: string;
+  season_unlocked: boolean;
 }

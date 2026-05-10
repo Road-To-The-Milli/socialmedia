@@ -1,0 +1,60 @@
+{
+  "name": "Cron Vendredi 18h — Relance comptes-rendus",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 18 * * 5"
+            }
+          ]
+        }
+      },
+      "id": "895e746f-d2ce-47a2-a5b4-de82cdc25ec1",
+      "name": "Schedule Trigger",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        240,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "// HANDOFF.md §4 cron 0 18 * * 5\n// 1. List Episodes where date in [now - 7d, now]\n// 2. For each, check Reviews has both samuel AND mathilde\n// 3. Mail any defaulter via Resend: \"🎬 Tu dois ton compte-rendu de E0X\"\nreturn [];"
+      },
+      "id": "99949182-71a4-46e0-a712-8e6d4d9b0f9d",
+      "name": "TODO — Implement automation",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        460,
+        300
+      ]
+    }
+  ],
+  "connections": {
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "TODO — Implement automation",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "active": false,
+  "meta": {
+    "handoffSection": "HANDOFF.md §4"
+  }
+}

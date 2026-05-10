@@ -1,0 +1,51 @@
+{
+  "name": "Workflow — Generate Synthese",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "989fa806-c009-4952-bab2-945564c40885",
+      "name": "Manual Trigger",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        240,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "// HANDOFF.md §4 — Generate Synthese\n// 1. Fetch Episodes, Reviews, Ideas, VoteResults\n// 2. Build prompt with system message:\n//    \"Tu es un critique de série bienveillant et un peu absurde. Génère un bilan\n//     de fin de saison en markdown : pitch officiel, épisode marquant, dynamique\n//     du couple, pronostic saison 2, citation finale. Ton fun-mais-sincère.\"\n// 3. Call Anthropic API (claude-sonnet-4-5) with ANTHROPIC_API_KEY\n// 4. Store response in Synthese.body_md\nreturn [];"
+      },
+      "id": "be89d408-a130-452e-bc73-6eff1d87cfc8",
+      "name": "TODO — Implement automation",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        460,
+        300
+      ]
+    }
+  ],
+  "connections": {
+    "Manual Trigger": {
+      "main": [
+        [
+          {
+            "node": "TODO — Implement automation",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "active": false,
+  "meta": {
+    "handoffSection": "HANDOFF.md §4"
+  }
+}

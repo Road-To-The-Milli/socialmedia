@@ -1,0 +1,151 @@
+{
+  "name": "POST /auth/verify",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "auth/verify",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "94b9d61b-b5f2-424b-a56c-5f8657a68dee",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        240,
+        300
+      ],
+      "webhookId": "f5a61e2f-3bfe-4ddc-a82f-2a04834dee64",
+      "notes": "x-api-key (required), x-session-token (auth routes)"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "d8b2b455-f055-4105-ac46-8359aefab2a0",
+              "leftValue": "={{ $json.headers[\"x-api-key\"] }}",
+              "rightValue": "={{ $env.SHARED_API_KEY }}",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "65d50718-3259-4ba4-9b04-eee21349c937",
+      "name": "API Key Guard",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        460,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ error: \"unauthorized\", code: \"no_key\" }) }}",
+        "options": {
+          "responseCode": 401
+        }
+      },
+      "id": "c8d42cdc-beba-4af7-80d3-7657a875b98c",
+      "name": "401 Unauthorized",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.2,
+      "position": [
+        680,
+        460
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "// HANDOFF.md §3.2\n// 1. Find user where magic_token = {{ $json.body.token }} AND token_expires_at > now\n// 2. If not found → respond 401 { error: \"expired\" }\n// 3. Generate session_token = uuid(), session_expires_at = now + 30d\n// 4. Update user → session_token, session_expires_at, clear magic_token\n// 5. Respond { session_token, user: { id, name, role } }\nreturn [{ json: { error: \"not_implemented\", code: \"todo\" } }];"
+      },
+      "id": "64713397-571e-48a3-b211-c43e749f3808",
+      "name": "TODO — Implement logic",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        900,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify($json) }}",
+        "options": {}
+      },
+      "id": "79f0ff5d-0054-44e4-aff8-941c79c4d4ac",
+      "name": "Respond",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.2,
+      "position": [
+        1120,
+        200
+      ]
+    }
+  ],
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "API Key Guard",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "API Key Guard": {
+      "main": [
+        [
+          {
+            "node": "TODO — Implement logic",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "401 Unauthorized",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "TODO — Implement logic": {
+      "main": [
+        [
+          {
+            "node": "Respond",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "active": false,
+  "meta": {
+    "templateCredsSetupCompleted": false,
+    "handoffSection": "HANDOFF.md §3"
+  }
+}

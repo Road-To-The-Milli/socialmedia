@@ -1,0 +1,53 @@
+{
+  "name": "Trigger — Review complet",
+  "nodes": [
+    {
+      "parameters": {
+        "notice": "Replace with Airtable Trigger watching Reviews → onInsert."
+      },
+      "id": "9c3f968f-9d17-42c2-b142-e8e071097dad",
+      "name": "Airtable Trigger (replace)",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        240,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "// HANDOFF.md §4 — Airtable trigger on Reviews insert\n// 1. After insert, count Reviews for the same episode\n// 2. If both samuel + mathilde present → mail both: \"✨ L'épisode E0X est complet\"\nreturn [];"
+      },
+      "id": "61af14b2-b6d9-40db-8060-69d4703800fe",
+      "name": "TODO — Implement automation",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        460,
+        300
+      ]
+    }
+  ],
+  "connections": {
+    "Airtable Trigger (replace)": {
+      "main": [
+        [
+          {
+            "node": "TODO — Implement automation",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "active": false,
+  "meta": {
+    "handoffSection": "HANDOFF.md §4"
+  }
+}

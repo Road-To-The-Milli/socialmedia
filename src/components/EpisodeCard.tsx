@@ -1,16 +1,10 @@
 import { Link } from "@tanstack/react-router";
 import type { Episode } from "@/lib/types";
-import { Star } from "lucide-react";
 
 const fallbackCover =
   "https://images.unsplash.com/photo-1518621736915-f3b1c41bfd00?w=1200&q=80";
 
 export function EpisodeCard({ ep, index = 0 }: { ep: Episode; index?: number }) {
-  const ratings = [ep.reviews.samuel?.rating, ep.reviews.mathilde?.rating].filter(
-    (n): n is number => typeof n === "number",
-  );
-  const avg = ratings.length ? ratings.reduce((a, b) => a + b, 0) / ratings.length : null;
-
   return (
     <Link
       to="/episode/$episodeId"
@@ -20,7 +14,7 @@ export function EpisodeCard({ ep, index = 0 }: { ep: Episode; index?: number }) 
     >
       <div className="aspect-[2/3] relative overflow-hidden bg-secondary">
         <img
-          src={ep.cover || fallbackCover}
+          src={ep.cover_url || fallbackCover}
           alt={ep.title}
           loading="lazy"
           className="absolute inset-0 w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
@@ -29,10 +23,16 @@ export function EpisodeCard({ ep, index = 0 }: { ep: Episode; index?: number }) 
         <div className="absolute top-2 left-2 px-2 py-1 rounded bg-primary text-primary-foreground text-xs font-bold tracking-wider">
           S01·E{String(ep.number).padStart(2, "0")}
         </div>
-        {avg !== null && (
-          <div className="absolute top-2 right-2 flex items-center gap-1 px-2 py-1 rounded bg-black/70 text-xs font-semibold">
-            <Star className="w-3 h-3 fill-accent text-accent" />
-            {avg.toFixed(1)}
+        {ep.tags && ep.tags.length > 0 && (
+          <div className="absolute top-2 right-2 flex flex-wrap gap-1 max-w-[60%] justify-end">
+            {ep.tags.slice(0, 1).map((tag) => (
+              <span
+                key={tag}
+                className="px-2 py-0.5 rounded bg-black/70 text-[10px] uppercase tracking-wider font-semibold"
+              >
+                {tag}
+              </span>
+            ))}
           </div>
         )}
         <div className="absolute bottom-0 inset-x-0 p-3">
