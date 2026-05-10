@@ -9,50 +9,204 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as IndexRouteImport } from './routes/index'
+import { Route as LoginRouteImport } from './routes/login'
+import { Route as AppRouteImport } from './routes/_app'
+import { Route as AppIndexRouteImport } from './routes/_app.index'
+import { Route as AppVoteRouteImport } from './routes/_app.vote'
+import { Route as AppTimelineRouteImport } from './routes/_app.timeline'
+import { Route as AppSyntheseRouteImport } from './routes/_app.synthese'
+import { Route as AppIdeasRouteImport } from './routes/_app.ideas'
+import { Route as AppEpisodeEpisodeIdRouteImport } from './routes/_app.episode.$episodeId'
 
-const IndexRoute = IndexRouteImport.update({
+const LoginRoute = LoginRouteImport.update({
+  id: '/login',
+  path: '/login',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AppRoute = AppRouteImport.update({
+  id: '/_app',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AppIndexRoute = AppIndexRouteImport.update({
   id: '/',
   path: '/',
-  getParentRoute: () => rootRouteImport,
+  getParentRoute: () => AppRoute,
+} as any)
+const AppVoteRoute = AppVoteRouteImport.update({
+  id: '/vote',
+  path: '/vote',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppTimelineRoute = AppTimelineRouteImport.update({
+  id: '/timeline',
+  path: '/timeline',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppSyntheseRoute = AppSyntheseRouteImport.update({
+  id: '/synthese',
+  path: '/synthese',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppIdeasRoute = AppIdeasRouteImport.update({
+  id: '/ideas',
+  path: '/ideas',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppEpisodeEpisodeIdRoute = AppEpisodeEpisodeIdRouteImport.update({
+  id: '/episode/$episodeId',
+  path: '/episode/$episodeId',
+  getParentRoute: () => AppRoute,
 } as any)
 
 export interface FileRoutesByFullPath {
-  '/': typeof IndexRoute
+  '/': typeof AppIndexRoute
+  '/login': typeof LoginRoute
+  '/ideas': typeof AppIdeasRoute
+  '/synthese': typeof AppSyntheseRoute
+  '/timeline': typeof AppTimelineRoute
+  '/vote': typeof AppVoteRoute
+  '/episode/$episodeId': typeof AppEpisodeEpisodeIdRoute
 }
 export interface FileRoutesByTo {
-  '/': typeof IndexRoute
+  '/login': typeof LoginRoute
+  '/ideas': typeof AppIdeasRoute
+  '/synthese': typeof AppSyntheseRoute
+  '/timeline': typeof AppTimelineRoute
+  '/vote': typeof AppVoteRoute
+  '/': typeof AppIndexRoute
+  '/episode/$episodeId': typeof AppEpisodeEpisodeIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
-  '/': typeof IndexRoute
+  '/_app': typeof AppRouteWithChildren
+  '/login': typeof LoginRoute
+  '/_app/ideas': typeof AppIdeasRoute
+  '/_app/synthese': typeof AppSyntheseRoute
+  '/_app/timeline': typeof AppTimelineRoute
+  '/_app/vote': typeof AppVoteRoute
+  '/_app/': typeof AppIndexRoute
+  '/_app/episode/$episodeId': typeof AppEpisodeEpisodeIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/'
+  fullPaths:
+    | '/'
+    | '/login'
+    | '/ideas'
+    | '/synthese'
+    | '/timeline'
+    | '/vote'
+    | '/episode/$episodeId'
   fileRoutesByTo: FileRoutesByTo
-  to: '/'
-  id: '__root__' | '/'
+  to:
+    | '/login'
+    | '/ideas'
+    | '/synthese'
+    | '/timeline'
+    | '/vote'
+    | '/'
+    | '/episode/$episodeId'
+  id:
+    | '__root__'
+    | '/_app'
+    | '/login'
+    | '/_app/ideas'
+    | '/_app/synthese'
+    | '/_app/timeline'
+    | '/_app/vote'
+    | '/_app/'
+    | '/_app/episode/$episodeId'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
-  IndexRoute: typeof IndexRoute
+  AppRoute: typeof AppRouteWithChildren
+  LoginRoute: typeof LoginRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/': {
-      id: '/'
+    '/login': {
+      id: '/login'
+      path: '/login'
+      fullPath: '/login'
+      preLoaderRoute: typeof LoginRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/_app': {
+      id: '/_app'
+      path: ''
+      fullPath: '/'
+      preLoaderRoute: typeof AppRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/_app/': {
+      id: '/_app/'
       path: '/'
       fullPath: '/'
-      preLoaderRoute: typeof IndexRouteImport
-      parentRoute: typeof rootRouteImport
+      preLoaderRoute: typeof AppIndexRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/vote': {
+      id: '/_app/vote'
+      path: '/vote'
+      fullPath: '/vote'
+      preLoaderRoute: typeof AppVoteRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/timeline': {
+      id: '/_app/timeline'
+      path: '/timeline'
+      fullPath: '/timeline'
+      preLoaderRoute: typeof AppTimelineRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/synthese': {
+      id: '/_app/synthese'
+      path: '/synthese'
+      fullPath: '/synthese'
+      preLoaderRoute: typeof AppSyntheseRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/ideas': {
+      id: '/_app/ideas'
+      path: '/ideas'
+      fullPath: '/ideas'
+      preLoaderRoute: typeof AppIdeasRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/episode/$episodeId': {
+      id: '/_app/episode/$episodeId'
+      path: '/episode/$episodeId'
+      fullPath: '/episode/$episodeId'
+      preLoaderRoute: typeof AppEpisodeEpisodeIdRouteImport
+      parentRoute: typeof AppRoute
     }
   }
 }
 
+interface AppRouteChildren {
+  AppIdeasRoute: typeof AppIdeasRoute
+  AppSyntheseRoute: typeof AppSyntheseRoute
+  AppTimelineRoute: typeof AppTimelineRoute
+  AppVoteRoute: typeof AppVoteRoute
+  AppIndexRoute: typeof AppIndexRoute
+  AppEpisodeEpisodeIdRoute: typeof AppEpisodeEpisodeIdRoute
+}
+
+const AppRouteChildren: AppRouteChildren = {
+  AppIdeasRoute: AppIdeasRoute,
+  AppSyntheseRoute: AppSyntheseRoute,
+  AppTimelineRoute: AppTimelineRoute,
+  AppVoteRoute: AppVoteRoute,
+  AppIndexRoute: AppIndexRoute,
+  AppEpisodeEpisodeIdRoute: AppEpisodeEpisodeIdRoute,
+}
+
+const AppRouteWithChildren = AppRoute._addFileChildren(AppRouteChildren)
+
 const rootRouteChildren: RootRouteChildren = {
-  IndexRoute: IndexRoute,
+  AppRoute: AppRouteWithChildren,
+  LoginRoute: LoginRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
