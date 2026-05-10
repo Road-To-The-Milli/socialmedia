@@ -133,7 +133,9 @@ function ReviewPanel({
         <Field label="Citation drôle">{review.funnyQuote}</Field>
         <Field label="Résumé">{review.summary}</Field>
         <Field label="On le referait ?">
-          {{ yes: "✅ Oui clairement", no: "❌ Non merci", maybe: "🤷 Peut-être" }[review.wouldRedo] || "—"}
+          {review.wouldRedo
+            ? { yes: "✅ Oui clairement", no: "❌ Non merci", maybe: "🤷 Peut-être" }[review.wouldRedo]
+            : "—"}
         </Field>
         {review.song && (
           <a
