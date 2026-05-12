@@ -20,32 +20,18 @@ const HEADERS_HINT = "x-api-key (required), x-session-token (auth routes)";
 const webhooks = [
   // === AUTH ===
   {
-    file: "auth.request.json",
-    name: "POST /auth/request",
-    method: "POST",
-    pathSegments: "auth/request",
-    auth: false,
-    todo: `// HANDOFF.md §3.1
-// 1. Find Users where email = {{ $json.body.email }}
-// 2. If not found → respond 200 { ok: true } anyway (anti-enumeration)
-// 3. Else generate token = uuid(), expires = now + 15 min
-// 4. Update user → magic_token, token_expires_at
-// 5. Send Resend mail with link APP_BASE_URL/auth/callback?token=<token>
-// 6. Respond 200 { ok: true }
-return [{ json: { ok: true } }];`,
-  },
-  {
     file: "auth.verify.json",
     name: "POST /auth/verify",
     method: "POST",
     pathSegments: "auth/verify",
     auth: false,
-    todo: `// HANDOFF.md §3.2
-// 1. Find user where magic_token = {{ $json.body.token }} AND token_expires_at > now
-// 2. If not found → respond 401 { error: "expired" }
-// 3. Generate session_token = uuid(), session_expires_at = now + 30d
-// 4. Update user → session_token, session_expires_at, clear magic_token
-// 5. Respond { session_token, user: { id, name, role } }
+    todo: `// Code auth
+// 1. Match $json.body.code against CODE_SAMUEL, CODE_MATHILDE,
+//    CODE_AMIS_SAMUEL, CODE_AMIS_MATHILDE.
+// 2. Find the first Users record with the matching role.
+// 3. Generate session_token = uuid(), session_expires_at = now + 30d.
+// 4. Update user -> session_token, session_expires_at.
+// 5. Respond { session_token, user: { id, name, role } }.
 return [{ json: { error: "not_implemented", code: "todo" } }];`,
   },
   {

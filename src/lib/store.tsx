@@ -2,12 +2,14 @@ import {
   useMutation,
   useQuery,
   useQueryClient,
+  type QueryClient,
   type UseQueryResult,
 } from "@tanstack/react-query";
 import { useEffect } from "react";
 import { api } from "./api";
 import type {
   Episode,
+  EpisodeDraft,
   Idea,
   IdeaStatus,
   ReviewDraft,
@@ -27,6 +29,8 @@ import type {
  */
 
 const VOTE_LS_KEY = "nc_votes";
+const REFERENCE_STALE_TIME = 10 * 60 * 1000;
+const LIVE_STALE_TIME = 60 * 1000;
 
 function readLocalVotes(): Record<string, string> {
   if (typeof window === "undefined") return {};
@@ -54,9 +58,29 @@ export const queryKeys = {
 export function useEpisodes(): UseQueryResult<Episode[]> {
   return useQuery({
     queryKey: queryKeys.episodes,
+    staleTime: REFERENCE_STALE_TIME,
     queryFn: async () => {
       const res = await api.get<{ episodes: Episode[] }>("/episodes");
       return [...res.episodes].sort((a, b) => a.number - b.number);
+    },
+  });
+}
+
+export function useCreateEpisode() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (input: EpisodeDraft) => {
+      const res = await api.post<{ episode?: Episode; error?: string }>("/episodes", input);
+      if (!res.episode) {
+        throw new Error(res.error || "La création d'épisode n'est pas encore branchée côté n8n.");
+      }
+      return { episode: res.episode };
+    },
+    onSuccess: (res) => {
+      qc.setQueryData<Episode[]>(queryKeys.episodes, (episodes = []) =>
+        [...episodes, res.episode].sort((a, b) => a.number - b.number),
+      );
+      void qc.invalidateQueries({ queryKey: queryKeys.episodes });
     },
   });
 }
@@ -66,6 +90,7 @@ export function useEpisodeReviews(episodeId: string | undefined) {
     queryKey: episodeId ? queryKeys.episodeReviews(episodeId) : ["episodes", "_", "reviews"],
     queryFn: () => api.get<ReviewsResponse>(`/episodes/${episodeId}/reviews`),
     enabled: Boolean(episodeId),
+    staleTime: LIVE_STALE_TIME,
   });
 }
 
@@ -84,6 +109,7 @@ export function useSaveReview(episodeId: string) {
 export function useIdeas(): UseQueryResult<Idea[]> {
   return useQuery({
     queryKey: queryKeys.ideas,
+    staleTime: LIVE_STALE_TIME,
     queryFn: async () => {
       const res = await api.get<{ ideas: Idea[] }>("/ideas");
       return res.ideas;
@@ -96,7 +122,8 @@ export function useCreateIdea() {
   return useMutation({
     mutationFn: (input: { title: string; description: string }) =>
       api.post<{ idea: Idea }>("/ideas", input),
-    onSuccess: () => {
+    onSuccess: (res) => {
+      qc.setQueryData<Idea[]>(queryKeys.ideas, (ideas = []) => [res.idea, ...ideas]);
       void qc.invalidateQueries({ queryKey: queryKeys.ideas });
     },
   });
@@ -107,7 +134,8 @@ export function useVoteIdea() {
   return useMutation({
     mutationFn: ({ id, kind }: { id: string; kind: "like" | "dislike" | "clear" }) =>
       api.post<{ idea: Idea }>(`/ideas/${id}/vote`, { kind }),
-    onSuccess: () => {
+    onSuccess: (res) => {
+      updateIdeaInCache(qc, res.idea);
       void qc.invalidateQueries({ queryKey: queryKeys.ideas });
     },
   });
@@ -118,7 +146,8 @@ export function useSetIdeaStatus() {
   return useMutation({
     mutationFn: ({ id, status }: { id: string; status: IdeaStatus }) =>
       api.patch<{ idea: Idea }>(`/ideas/${id}/status`, { status }),
-    onSuccess: () => {
+    onSuccess: (res) => {
+      updateIdeaInCache(qc, res.idea);
       void qc.invalidateQueries({ queryKey: queryKeys.ideas });
     },
   });
@@ -127,6 +156,7 @@ export function useSetIdeaStatus() {
 export function useVotes() {
   return useQuery({
     queryKey: queryKeys.votes,
+    staleTime: LIVE_STALE_TIME,
     queryFn: async () => {
       const res = await api.get<{ questions: VoteQuestion[] }>("/votes");
       const local = readLocalVotes();
@@ -148,7 +178,22 @@ export function useCastVote() {
       writeLocalVotes(map);
       return { questionId, option };
     },
-    onSuccess: () => {
+    onSuccess: ({ questionId, option }) => {
+      qc.setQueryData<VoteQuestion[]>(queryKeys.votes, (questions = []) =>
+        questions.map((q) =>
+          q.id === questionId
+            ? {
+                ...q,
+                my_choice: option,
+                total: q.my_choice ? q.total : q.total + 1,
+                results: {
+                  ...q.results,
+                  [option]: (q.results[option] ?? 0) + (q.my_choice ? 0 : 1),
+                },
+              }
+            : q,
+        ),
+      );
       void qc.invalidateQueries({ queryKey: queryKeys.votes });
     },
   });
@@ -157,8 +202,15 @@ export function useCastVote() {
 export function useSynthese(): UseQueryResult<Synthese> {
   return useQuery({
     queryKey: queryKeys.synthese,
+    staleTime: 5 * 60 * 1000,
     queryFn: () => api.get<Synthese>("/synthese"),
   });
+}
+
+function updateIdeaInCache(qc: QueryClient, idea: Idea): void {
+  qc.setQueryData<Idea[]>(queryKeys.ideas, (ideas = []) =>
+    ideas.map((current) => (current.id === idea.id ? idea : current)),
+  );
 }
 
 /**

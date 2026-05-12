@@ -43,108 +43,108 @@ Base : `Nous & Chill` (`appXXXXXXXXXXXX`)
 
 ### Table `Users`
 
-| Champ              | Type                  | Notes                                            |
-|--------------------|-----------------------|--------------------------------------------------|
-| `id`               | Auto-number / formula | Clé primaire textuelle ex. `usr_001`             |
-| `email`            | Email                 | unique                                           |
-| `name`             | Single line           |                                                  |
-| `role`             | Single select         | `samuel` · `mathilde` · `amis_samuel` · `amis_mathilde` |
-| `magic_token`      | Single line           | uuid v4, écrit à chaque demande de magic link    |
-| `token_expires_at` | DateTime              | now + 15 min                                     |
-| `session_token`    | Single line           | uuid v4, écrit après vérification (30 j)         |
-| `session_expires_at` | DateTime            | now + 30 j                                       |
-| `created_at`       | DateTime              | auto                                             |
+| Champ                | Type                  | Notes                                                   |
+| -------------------- | --------------------- | ------------------------------------------------------- |
+| `id`                 | Auto-number / formula | Clé primaire textuelle ex. `usr_001`                    |
+| `email`              | Email                 | unique                                                  |
+| `name`               | Single line           |                                                         |
+| `role`               | Single select         | `samuel` · `mathilde` · `amis_samuel` · `amis_mathilde` |
+| `magic_token`        | Single line           | uuid v4, écrit à chaque demande de magic link           |
+| `token_expires_at`   | DateTime              | now + 15 min                                            |
+| `session_token`      | Single line           | uuid v4, écrit après vérification (30 j)                |
+| `session_expires_at` | DateTime              | now + 30 j                                              |
+| `created_at`         | DateTime              | auto                                                    |
 
 Seed initial : 2 lignes (`samuel`, `mathilde`) + N lignes amis avec
 les rôles `amis_samuel` / `amis_mathilde`.
 
 ### Table `Episodes`
 
-| Champ        | Type           | Notes                                  |
-|--------------|----------------|----------------------------------------|
-| `id`         | Formula        | ex. `ep_01`                            |
-| `number`     | Number         | unique, 1..N                           |
-| `title`      | Single line    |                                        |
-| `date`       | Date           |                                        |
-| `place`      | Single line    |                                        |
-| `duration`   | Single line    | ex. `2h47`                             |
-| `tags`       | Multi select   | Slow burn, Cliffhanger, Awkward…       |
-| `cover_url`  | URL            |                                        |
-| `created_at` | DateTime       | auto                                   |
+| Champ        | Type         | Notes                            |
+| ------------ | ------------ | -------------------------------- |
+| `id`         | Formula      | ex. `ep_01`                      |
+| `number`     | Number       | unique, 1..N                     |
+| `title`      | Single line  |                                  |
+| `date`       | Date         |                                  |
+| `place`      | Single line  |                                  |
+| `duration`   | Single line  | ex. `2h47`                       |
+| `tags`       | Multi select | Slow burn, Cliffhanger, Awkward… |
+| `cover_url`  | URL          |                                  |
+| `created_at` | DateTime     | auto                             |
 
 ### Table `Reviews`
 
-| Champ              | Type                  | Notes                                                |
-|--------------------|-----------------------|------------------------------------------------------|
-| `id`               | Formula               |                                                      |
-| `episode`          | Link → Episodes       |                                                      |
-| `author`           | Link → Users          |                                                      |
-| `author_role`      | Lookup (`author.role`)| **Champ critique pour la confidentialité**           |
-| `rating`           | Number (1..5)         |                                                      |
-| `favorite_moment`  | Long text             |                                                      |
-| `awkward_moment`   | Long text             |                                                      |
-| `funny_quote`      | Long text             |                                                      |
-| `summary`          | Long text             |                                                      |
-| `would_redo`       | Single select         | `yes` · `no` · `maybe`                               |
-| `song`             | URL                   | Spotify / YouTube                                    |
-| `created_at`       | DateTime              | auto                                                 |
-| `updated_at`       | DateTime              | onChange                                             |
+| Champ             | Type                   | Notes                                      |
+| ----------------- | ---------------------- | ------------------------------------------ |
+| `id`              | Formula                |                                            |
+| `episode`         | Link → Episodes        |                                            |
+| `author`          | Link → Users           |                                            |
+| `author_role`     | Lookup (`author.role`) | **Champ critique pour la confidentialité** |
+| `rating`          | Number (1..5)          |                                            |
+| `favorite_moment` | Long text              |                                            |
+| `awkward_moment`  | Long text              |                                            |
+| `funny_quote`     | Long text              |                                            |
+| `summary`         | Long text              |                                            |
+| `would_redo`      | Single select          | `yes` · `no` · `maybe`                     |
+| `song`            | URL                    | Spotify / YouTube                          |
+| `created_at`      | DateTime               | auto                                       |
+| `updated_at`      | DateTime               | onChange                                   |
 
 Index conseillé : un seul review par couple `(episode, author)`. n8n upsert
 par recherche `episode = X AND author = Y`.
 
 ### Table `Ideas`
 
-| Champ          | Type            | Notes                          |
-|----------------|-----------------|--------------------------------|
-| `id`           | Formula         |                                |
-| `title`        | Single line     |                                |
-| `description`  | Long text       |                                |
-| `proposed_by`  | Link → Users    |                                |
-| `status`       | Single select   | `voting` · `selected` · `scheduled` · `done` |
-| `likes`        | Multi-link → Users   |                          |
-| `dislikes`     | Multi-link → Users   |                          |
-| `created_at`   | DateTime        | auto                           |
+| Champ         | Type               | Notes                                        |
+| ------------- | ------------------ | -------------------------------------------- |
+| `id`          | Formula            |                                              |
+| `title`       | Single line        |                                              |
+| `description` | Long text          |                                              |
+| `proposed_by` | Link → Users       |                                              |
+| `status`      | Single select      | `voting` · `selected` · `scheduled` · `done` |
+| `likes`       | Multi-link → Users |                                              |
+| `dislikes`    | Multi-link → Users |                                              |
+| `created_at`  | DateTime           | auto                                         |
 
 ### Table `VoteQuestions`
 
-| Champ      | Type            | Notes                          |
-|------------|-----------------|--------------------------------|
-| `id`       | Formula         |                                |
-| `question` | Long text       |                                |
-| `options`  | Long text (JSON)| ex. `["E01","E02","E04"]`      |
-| `active`   | Checkbox        |                                |
+| Champ      | Type             | Notes                     |
+| ---------- | ---------------- | ------------------------- |
+| `id`       | Formula          |                           |
+| `question` | Long text        |                           |
+| `options`  | Long text (JSON) | ex. `["E01","E02","E04"]` |
+| `active`   | Checkbox         |                           |
 
 ### Table `VoteResults`
 
 Une ligne **par option par question** — on n'enregistre **jamais** qui a voté.
 n8n incrémente juste un compteur.
 
-| Champ        | Type            | Notes                          |
-|--------------|-----------------|--------------------------------|
-| `id`         | Formula         |                                |
-| `question`   | Link → VoteQuestions |                           |
-| `option`     | Single line     |                                |
-| `count`      | Number          | incrémenté par n8n             |
+| Champ      | Type                 | Notes              |
+| ---------- | -------------------- | ------------------ |
+| `id`       | Formula              |                    |
+| `question` | Link → VoteQuestions |                    |
+| `option`   | Single line          |                    |
+| `count`    | Number               | incrémenté par n8n |
 
 ### Table `Synthese`
 
 Une seule ligne, écrite quand `season_unlocked = true`.
 
-| Champ        | Type        | Notes                              |
-|--------------|-------------|------------------------------------|
-| `id`         | Formula     |                                    |
-| `body_md`    | Long text   | markdown généré par Claude         |
-| `generated_at` | DateTime  | auto                               |
-| `avg_rating` | Number      |                                    |
-| `best_episode` | Link → Episodes |                                |
+| Champ          | Type            | Notes                      |
+| -------------- | --------------- | -------------------------- |
+| `id`           | Formula         |                            |
+| `body_md`      | Long text       | markdown généré par Claude |
+| `generated_at` | DateTime        | auto                       |
+| `avg_rating`   | Number          |                            |
+| `best_episode` | Link → Episodes |                            |
 
 ### Table `Settings` (singleton)
 
-| Champ              | Type      | Notes                                       |
-|--------------------|-----------|---------------------------------------------|
-| `season_unlocked`  | Checkbox  | `false` pendant la saison, `true` à la fin  |
-| `season_end_date`  | Date      | utilisé par le cron de bascule              |
+| Champ             | Type     | Notes                                      |
+| ----------------- | -------- | ------------------------------------------ |
+| `season_unlocked` | Checkbox | `false` pendant la saison, `true` à la fin |
+| `season_end_date` | Date     | utilisé par le cron de bascule             |
 
 ---
 
@@ -169,6 +169,7 @@ const CAN_SEE = {
 ## 3. Contrats des webhooks n8n
 
 Tous les webhooks :
+
 - `Method: POST` (sauf indication)
 - Header `x-api-key: <SHARED_API_KEY>` obligatoire
 - Header `x-session-token: <session_token>` pour les routes authentifiées
@@ -180,11 +181,13 @@ Tous les webhooks :
 Demande un magic link.
 
 **Request**
+
 ```json
 { "email": "samuel@example.com" }
 ```
 
 **n8n flow**
+
 1. Find user in `Users` where `email = {{email}}`
 2. Si pas trouvé : retourner `200 { ok: true }` quand même (anti-énumération)
 3. Générer `token = uuid()`, `expires = now + 15min`
@@ -200,11 +203,13 @@ Demande un magic link.
 Échange un magic token contre une session.
 
 **Request**
+
 ```json
 { "token": "uuid" }
 ```
 
 **n8n flow**
+
 1. Find user where `magic_token = {{token}}` AND `token_expires_at > now`
 2. Si pas trouvé → `401 { error: "expired" }`
 3. Générer `session_token = uuid()`, `session_expires = now + 30j`
@@ -212,6 +217,7 @@ Demande un magic link.
 5. Retourner
 
 **Response**
+
 ```json
 {
   "session_token": "uuid",
@@ -230,6 +236,7 @@ Hydrate la session au reload.
 **n8n flow** : find user where `session_token = X` AND `session_expires_at > now`.
 
 **Response**
+
 ```json
 { "user": { "id": "usr_001", "name": "Samuel", "role": "samuel" } }
 ```
@@ -245,24 +252,59 @@ Invalide la session.
 **n8n flow** : retourne tous les épisodes triés par `number`.
 
 **Response**
+
 ```json
 {
   "episodes": [
     {
-      "id": "ep_01", "number": 1, "title": "Le Pilote — Premier Verre",
-      "date": "2025-03-12", "place": "Bar à Vin, Le Marais",
-      "duration": "2h47", "tags": ["Slow burn", "Vin renversé"],
+      "id": "ep_01",
+      "number": 1,
+      "title": "Le Pilote — Premier Verre",
+      "date": "2025-03-12",
+      "place": "Bar à Vin, Le Marais",
+      "duration": "2h47",
+      "tags": ["Slow burn", "Vin renversé"],
       "cover_url": "https://..."
     }
   ]
 }
 ```
 
-### 3.6 `GET /episodes/:id/reviews`
+### 3.6 `POST /episodes`
+
+Crée une nouvelle date / un nouvel épisode. Réservé aux rôles `samuel` et
+`mathilde`.
+
+**Headers** : `x-session-token`
+
+**Request**
+
+```json
+{
+  "title": "E05 — Dîner surprise",
+  "date": "2025-05-24",
+  "place": "Paris, Le Marais",
+  "duration": "2h30",
+  "tags": ["Slow burn", "Fou rire"],
+  "cover_url": "https://..."
+}
+```
+
+**n8n flow**
+
+1. Auth → `session.role`
+2. Refuser si le rôle n'est pas `samuel` ou `mathilde`
+3. Valider `title`, `date`, `place`
+4. Calculer `number = max(Episodes.number) + 1`
+5. Créer l'épisode dans Airtable
+6. Retourner `{ "episode": {...} }`
+
+### 3.7 `GET /episodes/:id/reviews`
 
 **Headers** : `x-session-token`
 
 **n8n flow** :
+
 1. Auth → récupère `session.role`
 2. Récupère `Settings.season_unlocked`
 3. Calcule `allowed_roles` selon table de vérité
@@ -271,21 +313,29 @@ Invalide la session.
 6. Retourne
 
 **Response**
+
 ```json
 {
   "reviews": [
     {
-      "id": "rev_xx", "author_role": "samuel", "author_name": "Samuel",
-      "rating": 5, "favorite_moment": "...", "awkward_moment": "...",
-      "funny_quote": "...", "summary": "...", "would_redo": "yes",
-      "song": "https://open.spotify.com/...", "updated_at": "..."
+      "id": "rev_xx",
+      "author_role": "samuel",
+      "author_name": "Samuel",
+      "rating": 5,
+      "favorite_moment": "...",
+      "awkward_moment": "...",
+      "funny_quote": "...",
+      "summary": "...",
+      "would_redo": "yes",
+      "song": "https://open.spotify.com/...",
+      "updated_at": "..."
     }
   ],
   "season_unlocked": false
 }
 ```
 
-### 3.7 `POST /episodes/:id/reviews`
+### 3.8 `POST /episodes/:id/reviews`
 
 Crée ou met à jour le review de l'utilisateur courant. Un seul review par
 `(episode, author)`.
@@ -293,35 +343,45 @@ Crée ou met à jour le review de l'utilisateur courant. Un seul review par
 **Headers** : `x-session-token`
 
 **Request**
+
 ```json
 {
   "rating": 5,
-  "favorite_moment": "...", "awkward_moment": "...",
-  "funny_quote": "...", "summary": "...",
-  "would_redo": "yes", "song": "https://..."
+  "favorite_moment": "...",
+  "awkward_moment": "...",
+  "funny_quote": "...",
+  "summary": "...",
+  "would_redo": "yes",
+  "song": "https://..."
 }
 ```
 
 **n8n flow**
+
 1. Auth → `session.user_id`, `session.role`
 2. **Sécurité** : `author_role` est forcé à `session.role`, jamais lu du body
 3. Upsert dans `Reviews` where `episode = id AND author = user_id`
 4. Retourner le review créé/màj
 
-### 3.8 `GET /ideas`
+### 3.9 `GET /ideas`
 
 Retourne toutes les idées (visibles par tous).
 
 **Response**
+
 ```json
 {
   "ideas": [
     {
-      "id": "idea_01", "title": "...", "description": "...",
-      "proposed_by_id": "usr_002", "proposed_by_name": "Mathilde",
+      "id": "idea_01",
+      "title": "...",
+      "description": "...",
+      "proposed_by_id": "usr_002",
+      "proposed_by_name": "Mathilde",
       "status": "voting",
-      "likes": ["usr_001"], "dislikes": [],
-      "my_vote": "like"   // calculé par n8n vs session.user_id
+      "likes": ["usr_001"],
+      "dislikes": [],
+      "my_vote": "like" // calculé par n8n vs session.user_id
     }
   ]
 }
@@ -332,6 +392,7 @@ Retourne toutes les idées (visibles par tous).
 **Headers** : `x-session-token`
 
 **Request**
+
 ```json
 { "title": "...", "description": "..." }
 ```
@@ -343,11 +404,13 @@ Retourne toutes les idées (visibles par tous).
 **Headers** : `x-session-token`
 
 **Request**
+
 ```json
-{ "kind": "like" }   // "like" | "dislike" | "clear"
+{ "kind": "like" } // "like" | "dislike" | "clear"
 ```
 
 n8n :
+
 - Retire `user_id` des deux multi-links
 - Si `kind=like` → ajoute à `likes`
 - Si `kind=dislike` → ajoute à `dislikes`
@@ -367,15 +430,17 @@ Retourne les questions actives + résultats agrégés. Ne dit jamais qui a
 voté quoi.
 
 **Response**
+
 ```json
 {
   "questions": [
     {
-      "id": "q_01", "question": "Quel épisode est le plus likely à devenir un meme ?",
+      "id": "q_01",
+      "question": "Quel épisode est le plus likely à devenir un meme ?",
       "options": ["E01 Premier Verre", "E02 Cinéma Mystère", "..."],
       "results": { "E01 Premier Verre": 3, "E02 Cinéma Mystère": 5 },
       "total": 8,
-      "my_choice": "E02 Cinéma Mystère"   // depuis localStorage côté front, pas d'Airtable
+      "my_choice": "E02 Cinéma Mystère" // depuis localStorage côté front, pas d'Airtable
     }
   ]
 }
@@ -386,6 +451,7 @@ voté quoi.
 **Request** : `{ "option": "E02 Cinéma Mystère" }`
 
 n8n :
+
 1. Trouve la ligne `VoteResults where question = X AND option = Y`
 2. Incrémente `count` (créer si pas existante)
 3. Retourne `{ ok: true }`
@@ -409,13 +475,13 @@ générée par Claude.
 1. Récupère tous les épisodes où `date` est dans les 7 derniers jours
 2. Pour chaque épisode, vérifie si `Reviews` contient les entrées samuel ET mathilde
 3. Si manquant : envoie un mail au défaillant
-   *"🎬 Tu dois ton compte-rendu de E0X — c'est le moment"*
+   _"🎬 Tu dois ton compte-rendu de E0X — c'est le moment"_
 
 ### Trigger Airtable — Review complet
 
 Quand `Reviews` reçoit un nouveau record, vérifier si l'épisode a maintenant
 2 reviews (samuel + mathilde). Si oui → mail aux deux :
-*"✨ L'épisode E0X est complet. Tu verras le sien à la fin de la saison."*
+_"✨ L'épisode E0X est complet. Tu verras le sien à la fin de la saison."_
 
 ### Cron quotidien — Bascule de fin de saison
 
@@ -432,14 +498,14 @@ SI now >= Settings.season_end_date AND season_unlocked === false
 1. Récupère tous les `Episodes`, `Reviews`, `Ideas`, `VoteResults`
 2. Construit un prompt avec ces données
 3. Appelle Claude (`claude-sonnet-4-5`) avec un system prompt :
-   *"Tu es un critique de série bienveillant et un peu absurde. Génère un bilan
+   _"Tu es un critique de série bienveillant et un peu absurde. Génère un bilan
    de fin de saison en markdown : pitch officiel, épisode marquant, dynamique
-   du couple, pronostic saison 2, citation finale. Ton fun-mais-sincère."*
+   du couple, pronostic saison 2, citation finale. Ton fun-mais-sincère."_
 4. Stocke la réponse dans `Synthese.body_md`
 
 ### Cron J-7 avant fin
 
-Mail à tous : *"🎟 Le verdict approche, prépare ton vote."*
+Mail à tous : _"🎟 Le verdict approche, prépare ton vote."_
 
 ---
 
@@ -450,6 +516,7 @@ Mail à tous : *"🎟 Le verdict approche, prépare ton vote."*
 ### 5.1 Créer un client API
 
 `src/lib/api.ts` — wrapper `fetch` qui :
+
 - ajoute `x-api-key` toujours
 - ajoute `x-session-token` si `localStorage.nc_session.session_token` existe
 - gère le `401` → redirige vers `/login`
@@ -475,25 +542,26 @@ Remplacer **tous** les `seedEpisodes / seedIdeas / seedAbsurdVotes` par des
 appels API + cache TanStack Query :
 
 ```ts
-useEpisodes()              // GET /episodes
-useEpisodeReviews(id)      // GET /episodes/:id/reviews
-useSaveReview(id)          // POST /episodes/:id/reviews
-useIdeas()                 // GET /ideas
-useCreateIdea()            // POST /ideas
-useVoteIdea()              // POST /ideas/:id/vote
-useSetIdeaStatus()         // PATCH /ideas/:id/status
-useVotes()                 // GET /votes
-useCastVote()              // POST /votes/:qid
-useSynthese()              // GET /synthese
-useSeasonUnlocked()        // dérivé du retour de /episodes/:id/reviews
+useEpisodes(); // GET /episodes
+useEpisodeReviews(id); // GET /episodes/:id/reviews
+useSaveReview(id); // POST /episodes/:id/reviews
+useIdeas(); // GET /ideas
+useCreateIdea(); // POST /ideas
+useVoteIdea(); // POST /ideas/:id/vote
+useSetIdeaStatus(); // PATCH /ideas/:id/status
+useVotes(); // GET /votes
+useCastVote(); // POST /votes/:qid
+useSynthese(); // GET /synthese
+useSeasonUnlocked(); // dérivé du retour de /episodes/:id/reviews
 ```
 
 ### 5.4 Adapter l'UI au gating de fin de saison
 
 Sur l'écran épisode :
+
 - Si `season_unlocked === false` ET le user est samuel/mathilde →
   n'afficher que **son propre** review + un placeholder pour l'autre :
-  *"🔒 Le compte rendu de Mathilde sera visible à la fin de la saison."*
+  _"🔒 Le compte rendu de Mathilde sera visible à la fin de la saison."_
 - Si `season_unlocked === true` → tout afficher
 
 Sur la timeline / le dashboard : remplacer les `avg` calculés sur les 2
@@ -507,8 +575,9 @@ Une fois tous les hooks branchés sur l'API, ce fichier n'a plus d'utilité.
 ### 5.6 Login page
 
 Remplacer le profile-picker actuel par un formulaire :
+
 1. Champ email → bouton "Recevoir mon lien"
-2. État de confirmation : *"📬 Vérifie tes mails. Le lien expire dans 15 min."*
+2. État de confirmation : _"📬 Vérifie tes mails. Le lien expire dans 15 min."_
 3. La page `/auth/callback?token=...` récupère la session puis redirige
 
 ---

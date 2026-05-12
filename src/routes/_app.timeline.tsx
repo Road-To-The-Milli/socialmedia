@@ -1,6 +1,10 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
+import { useState } from "react";
+import { toast } from "sonner";
 import { Loader2, MapPin, Calendar } from "lucide-react";
-import { useEpisodes } from "@/lib/store";
+import { useAuth } from "@/lib/auth";
+import { useCreateEpisode, useEpisodes } from "@/lib/store";
+import type { EpisodeDraft } from "@/lib/types";
 
 export const Route = createFileRoute("/_app/timeline")({
   head: () => ({ meta: [{ title: "Timeline · Nous & Chill" }] }),
@@ -8,7 +12,10 @@ export const Route = createFileRoute("/_app/timeline")({
 });
 
 function Timeline() {
+  const { user } = useAuth();
   const { data: episodes, isLoading } = useEpisodes();
+  const createEpisode = useCreateEpisode();
+  const canCreateEpisode = user?.role === "samuel" || user?.role === "mathilde";
 
   if (isLoading) {
     return (
@@ -18,9 +25,7 @@ function Timeline() {
     );
   }
 
-  const sorted = [...(episodes ?? [])].sort(
-    (a, b) => +new Date(a.date) - +new Date(b.date),
-  );
+  const sorted = [...(episodes ?? [])].sort((a, b) => +new Date(a.date) - +new Date(b.date));
 
   return (
     <div className="max-w-4xl mx-auto px-4 sm:px-6 py-10">
@@ -31,10 +36,25 @@ function Timeline() {
         <h1 className="text-3xl sm:text-5xl font-black tracking-tighter">
           La saison épisode par épisode
         </h1>
-        <p className="text-muted-foreground mt-3">
-          Du pilote au cliffhanger. Spoilers inside.
-        </p>
+        <p className="text-muted-foreground mt-3">Du pilote au cliffhanger. Spoilers inside.</p>
       </div>
+
+      {canCreateEpisode && (
+        <EpisodeForm
+          saving={createEpisode.isPending}
+          onCreate={(draft) =>
+            createEpisode.mutate(draft, {
+              onSuccess: () => toast.success("Date ajoutée à la saison"),
+              onError: (err) =>
+                toast.error(
+                  err instanceof Error
+                    ? err.message
+                    : "Impossible d'ajouter cette date pour le moment.",
+                ),
+            })
+          }
+        />
+      )}
 
       <div className="relative pl-6 sm:pl-10">
         <div className="absolute left-2 sm:left-4 top-0 bottom-0 w-0.5 bg-gradient-to-b from-primary via-primary/50 to-transparent" />
@@ -107,5 +127,114 @@ function Timeline() {
         ))}
       </div>
     </div>
+  );
+}
+
+function EpisodeForm({
+  saving,
+  onCreate,
+}: {
+  saving: boolean;
+  onCreate: (draft: EpisodeDraft) => void;
+}) {
+  const [title, setTitle] = useState("");
+  const [date, setDate] = useState("");
+  const [place, setPlace] = useState("");
+  const [duration, setDuration] = useState("");
+  const [tags, setTags] = useState("");
+  const [coverUrl, setCoverUrl] = useState("");
+
+  const submit = (e: React.FormEvent) => {
+    e.preventDefault();
+    const trimmedTitle = title.trim();
+    const trimmedDate = date.trim();
+    const trimmedPlace = place.trim();
+    if (!trimmedTitle || !trimmedDate || !trimmedPlace) return;
+
+    onCreate({
+      title: trimmedTitle,
+      date: trimmedDate,
+      place: trimmedPlace,
+      duration: duration.trim() || undefined,
+      tags: tags
+        .split(",")
+        .map((tag) => tag.trim())
+        .filter(Boolean),
+      cover_url: coverUrl.trim() || undefined,
+    });
+
+    setTitle("");
+    setDate("");
+    setPlace("");
+    setDuration("");
+    setTags("");
+    setCoverUrl("");
+  };
+
+  return (
+    <form
+      onSubmit={submit}
+      className="mb-10 bg-card border border-border rounded-xl p-5 shadow-poster"
+    >
+      <div className="flex items-start justify-between gap-4 mb-4">
+        <div>
+          <h2 className="text-lg font-bold">Ajouter une date</h2>
+          <p className="text-sm text-muted-foreground">
+            Crée un épisode, puis chacun pourra remplir son compte rendu.
+          </p>
+        </div>
+        <button
+          type="submit"
+          disabled={!title.trim() || !date || !place.trim() || saving}
+          className="shrink-0 bg-primary text-primary-foreground px-4 py-2 rounded-md text-sm font-semibold disabled:opacity-40"
+        >
+          {saving ? "Ajout..." : "Ajouter"}
+        </button>
+      </div>
+
+      <div className="grid sm:grid-cols-2 gap-3">
+        <Input label="Titre" value={title} onChange={setTitle} placeholder="E05 — Dîner surprise" />
+        <Input label="Date" value={date} onChange={setDate} type="date" />
+        <Input label="Lieu" value={place} onChange={setPlace} placeholder="Paris, Le Marais" />
+        <Input label="Durée" value={duration} onChange={setDuration} placeholder="2h30" />
+        <Input label="Tags" value={tags} onChange={setTags} placeholder="Slow burn, fou rire" />
+        <Input
+          label="Image"
+          value={coverUrl}
+          onChange={setCoverUrl}
+          placeholder="https://..."
+          type="url"
+        />
+      </div>
+    </form>
+  );
+}
+
+function Input({
+  label,
+  value,
+  onChange,
+  placeholder,
+  type = "text",
+}: {
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+  placeholder?: string;
+  type?: string;
+}) {
+  return (
+    <label className="block">
+      <span className="block text-xs uppercase tracking-wider text-muted-foreground mb-1">
+        {label}
+      </span>
+      <input
+        type={type}
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        placeholder={placeholder}
+        className="w-full bg-input/50 border border-border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+      />
+    </label>
   );
 }

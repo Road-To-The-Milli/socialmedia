@@ -22,6 +22,15 @@ export interface Episode {
   cover_url?: string;
 }
 
+export interface EpisodeDraft {
+  title: string;
+  date: string;
+  place: string;
+  duration?: string;
+  tags?: string[];
+  cover_url?: string;
+}
+
 export type WouldRedo = "yes" | "no" | "maybe" | "";
 
 export interface Review {

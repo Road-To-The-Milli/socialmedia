@@ -1,19 +1,11 @@
-import {
-  createContext,
-  useCallback,
-  useContext,
-  useEffect,
-  useState,
-  type ReactNode,
-} from "react";
+import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from "react";
 import { api, clearSession, readSession, writeSession, ApiError } from "./api";
 import type { Session, User } from "./types";
 
 interface AuthCtx {
   user: User | null;
   loading: boolean;
-  requestMagicLink: (email: string) => Promise<void>;
-  verifyMagicLink: (token: string) => Promise<User>;
+  loginWithCode: (code: string) => Promise<User>;
   logout: () => Promise<void>;
   refresh: () => Promise<User | null>;
 }
@@ -21,7 +13,7 @@ interface AuthCtx {
 const Ctx = createContext<AuthCtx | null>(null);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<User | null>(null);
+  const [user, setUser] = useState<User | null>(() => readSession()?.user ?? null);
   const [loading, setLoading] = useState(true);
 
   const refresh = useCallback(async (): Promise<User | null> => {
@@ -47,12 +39,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     void refresh().finally(() => setLoading(false));
   }, [refresh]);
 
-  const requestMagicLink = useCallback(async (email: string) => {
-    await api.post<{ ok: true }>("/auth/request", { email });
-  }, []);
-
-  const verifyMagicLink = useCallback(async (token: string): Promise<User> => {
-    const res = await api.post<Session>("/auth/verify", { token });
+  const loginWithCode = useCallback(async (code: string): Promise<User> => {
+    const res = await api.post<Session>("/auth/verify", { code });
     writeSession({ session_token: res.session_token, user: res.user });
     setUser(res.user);
     return res.user;
@@ -69,7 +57,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   return (
-    <Ctx.Provider value={{ user, loading, requestMagicLink, verifyMagicLink, logout, refresh }}>
+    <Ctx.Provider value={{ user, loading, loginWithCode, logout, refresh }}>
       {children}
     </Ctx.Provider>
   );

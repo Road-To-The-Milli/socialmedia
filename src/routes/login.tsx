@@ -1,6 +1,6 @@
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { Clapperboard, Loader2, Mail } from "lucide-react";
+import { Clapperboard, KeyRound, Loader2 } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 
 export const Route = createFileRoute("/login")({
@@ -10,13 +10,13 @@ export const Route = createFileRoute("/login")({
   component: LoginPage,
 });
 
-type Status = "idle" | "submitting" | "sent" | "error";
+type Status = "idle" | "submitting" | "error";
 
 function LoginPage() {
-  const { user, requestMagicLink } = useAuth();
+  const { user, loginWithCode } = useAuth();
   const nav = useNavigate();
   const search = Route.useSearch();
-  const [email, setEmail] = useState("");
+  const [code, setCode] = useState("");
   const [status, setStatus] = useState<Status>("idle");
   const [error, setError] = useState<string | null>(null);
 
@@ -26,17 +26,17 @@ function LoginPage() {
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!email.trim()) return;
+    const cleanCode = code.trim();
+    if (!cleanCode) return;
+
     setStatus("submitting");
     setError(null);
     try {
-      await requestMagicLink(email.trim().toLowerCase());
-      setStatus("sent");
+      await loginWithCode(cleanCode);
+      nav({ to: search.redirect || "/" });
     } catch {
       setStatus("error");
-      setError(
-        "Impossible d'envoyer le lien pour le moment. Réessaie dans quelques secondes.",
-      );
+      setError("Code invalide. Verifie le code de ton groupe et reessaie.");
     }
   };
 
@@ -62,68 +62,54 @@ function LoginPage() {
             </span>
           </div>
           <p className="text-muted-foreground text-sm uppercase tracking-[0.3em]">
-            Saison 1 · épisodes en cours
+            Saison 1 - episodes en cours
           </p>
         </div>
 
         <div className="bg-card/80 backdrop-blur-md border border-border rounded-2xl p-6 shadow-poster">
-          {status === "sent" ? (
-            <div className="text-center py-2">
-              <Mail className="w-8 h-8 text-primary mx-auto mb-3" />
-              <h2 className="text-xl font-bold mb-1">📬 Vérifie tes mails</h2>
-              <p className="text-sm text-muted-foreground mb-4">
-                On t'a envoyé un lien magique sur <strong>{email}</strong>. Clique dessus
-                pour ouvrir la saison. Le lien expire dans 15 min.
-              </p>
-              <button
-                onClick={() => {
-                  setStatus("idle");
-                  setEmail("");
-                }}
-                className="text-xs text-muted-foreground hover:text-foreground underline"
-              >
-                Mauvaise adresse ? Recommencer
-              </button>
+          <form onSubmit={submit}>
+            <div className="flex items-center gap-3 mb-2">
+              <span className="inline-flex size-10 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                <KeyRound className="size-5" />
+              </span>
+              <h2 className="text-xl font-bold">Qui regarde ?</h2>
             </div>
-          ) : (
-            <form onSubmit={submit}>
-              <h2 className="text-xl font-bold mb-1">Qui regarde ?</h2>
-              <p className="text-sm text-muted-foreground mb-5">
-                Renseigne ton email pour recevoir un lien magique. Pas de mot de passe, on
-                se fait confiance.
-              </p>
-              <input
-                type="email"
-                inputMode="email"
-                autoComplete="email"
-                required
-                placeholder="ton@email.com"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                className="w-full bg-input/50 border border-border rounded-lg px-4 py-3 mb-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
-              />
-              {status === "error" && error && (
-                <p className="text-xs text-destructive mb-3">{error}</p>
+            <p className="text-sm text-muted-foreground mb-5">
+              Entre le code secret de ton groupe pour ouvrir la saison.
+            </p>
+            <input
+              type="password"
+              inputMode="text"
+              autoComplete="one-time-code"
+              required
+              placeholder="Code secret"
+              value={code}
+              onChange={(e) => setCode(e.target.value)}
+              className="w-full bg-input/50 border border-border rounded-lg px-4 py-3 mb-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+            />
+            {status === "error" && error && (
+              <p className="text-xs text-destructive mb-3">{error}</p>
+            )}
+            <button
+              type="submit"
+              disabled={!code.trim() || status === "submitting"}
+              className="w-full inline-flex items-center justify-center gap-2 bg-primary hover:bg-primary/90 disabled:opacity-30 disabled:cursor-not-allowed text-primary-foreground font-bold py-3 rounded-lg transition-all"
+            >
+              {status === "submitting" ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" /> Verification...
+                </>
+              ) : (
+                <>
+                  <KeyRound className="w-4 h-4" /> Entrer
+                </>
               )}
-              <button
-                type="submit"
-                disabled={!email.trim() || status === "submitting"}
-                className="w-full inline-flex items-center justify-center gap-2 bg-primary hover:bg-primary/90 disabled:opacity-30 disabled:cursor-not-allowed text-primary-foreground font-bold py-3 rounded-lg transition-all"
-              >
-                {status === "submitting" ? (
-                  <>
-                    <Loader2 className="w-4 h-4 animate-spin" /> Envoi en cours…
-                  </>
-                ) : (
-                  <>📬 Recevoir mon lien</>
-                )}
-              </button>
-            </form>
-          )}
+            </button>
+          </form>
         </div>
 
         <p className="text-center text-xs text-muted-foreground mt-4">
-          ⚠ Contenu réservé. Toute fuite entraîne une annulation immédiate de la saison.
+          Contenu reserve. Toute fuite entraine une annulation immediate de la saison.
         </p>
       </div>
     </div>

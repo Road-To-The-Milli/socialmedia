@@ -14,7 +14,7 @@ function Dashboard() {
   const episodesQuery = useEpisodes();
   const ideasQuery = useIdeas();
 
-  if (episodesQuery.isLoading || ideasQuery.isLoading) {
+  if (episodesQuery.isLoading) {
     return (
       <div className="min-h-[60vh] flex items-center justify-center">
         <Loader2 className="w-6 h-6 animate-spin text-primary" />
@@ -38,6 +38,8 @@ function Dashboard() {
               "https://images.unsplash.com/photo-1518621736915-f3b1c41bfd00?w=1920&q=80"
             }
             alt=""
+            fetchPriority="high"
+            decoding="async"
             className="absolute inset-0 w-full h-full object-cover"
           />
           <div className="absolute inset-0" style={{ background: "var(--gradient-hero)" }} />
@@ -88,28 +90,36 @@ function Dashboard() {
             Tout voir →
           </Link>
         </div>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-          {trending.map((i) => (
-            <Link
-              key={i.id}
-              to="/ideas"
-              className="block bg-card border border-border rounded-xl p-4 hover:border-primary transition group"
-            >
-              <div className="flex items-start justify-between gap-2">
-                <h3 className="font-semibold group-hover:text-primary transition">{i.title}</h3>
-                <span className="text-xs px-2 py-0.5 rounded-full bg-secondary shrink-0">
-                  {statusLabel(i.status)}
-                </span>
-              </div>
-              <p className="text-sm text-muted-foreground mt-1 line-clamp-2">{i.description}</p>
-              <div className="flex gap-3 mt-3 text-xs text-muted-foreground">
-                <span>👍 {i.likes.length}</span>
-                <span>👎 {i.dislikes.length}</span>
-                <span>par {i.proposed_by_name}</span>
-              </div>
-            </Link>
-          ))}
-        </div>
+        {ideasQuery.isLoading ? (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+            {Array.from({ length: 3 }).map((_, i) => (
+              <div key={i} className="h-32 rounded-xl bg-card border border-border animate-pulse" />
+            ))}
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+            {trending.map((i) => (
+              <Link
+                key={i.id}
+                to="/ideas"
+                className="block bg-card border border-border rounded-xl p-4 hover:border-primary transition group"
+              >
+                <div className="flex items-start justify-between gap-2">
+                  <h3 className="font-semibold group-hover:text-primary transition">{i.title}</h3>
+                  <span className="text-xs px-2 py-0.5 rounded-full bg-secondary shrink-0">
+                    {statusLabel(i.status)}
+                  </span>
+                </div>
+                <p className="text-sm text-muted-foreground mt-1 line-clamp-2">{i.description}</p>
+                <div className="flex gap-3 mt-3 text-xs text-muted-foreground">
+                  <span>👍 {i.likes.length}</span>
+                  <span>👎 {i.dislikes.length}</span>
+                  <span>par {i.proposed_by_name}</span>
+                </div>
+              </Link>
+            ))}
+          </div>
+        )}
       </section>
 
       <section className="max-w-7xl mx-auto px-4 sm:px-6 mt-16">

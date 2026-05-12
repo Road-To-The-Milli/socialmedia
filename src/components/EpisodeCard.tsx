@@ -1,8 +1,7 @@
 import { Link } from "@tanstack/react-router";
 import type { Episode } from "@/lib/types";
 
-const fallbackCover =
-  "https://images.unsplash.com/photo-1518621736915-f3b1c41bfd00?w=1200&q=80";
+const fallbackCover = "https://images.unsplash.com/photo-1518621736915-f3b1c41bfd00?w=1200&q=80";
 
 export function EpisodeCard({ ep, index = 0 }: { ep: Episode; index?: number }) {
   return (
@@ -17,6 +16,8 @@ export function EpisodeCard({ ep, index = 0 }: { ep: Episode; index?: number }) 
           src={ep.cover_url || fallbackCover}
           alt={ep.title}
           loading="lazy"
+          decoding="async"
+          sizes="(min-width: 640px) 300px, 260px"
           className="absolute inset-0 w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
         />
         <div className="absolute inset-0" style={{ background: "var(--gradient-hero)" }} />

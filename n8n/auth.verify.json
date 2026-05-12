@@ -12,12 +12,9 @@
       "name": "Webhook",
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 2,
-      "position": [
-        240,
-        300
-      ],
+      "position": [240, 300],
       "webhookId": "f5a61e2f-3bfe-4ddc-a82f-2a04834dee64",
-      "notes": "x-api-key (required), x-session-token (auth routes)"
+      "notes": "x-api-key required"
     },
     {
       "parameters": {
@@ -45,10 +42,7 @@
       "name": "API Key Guard",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.2,
-      "position": [
-        460,
-        300
-      ]
+      "position": [460, 300]
     },
     {
       "parameters": {
@@ -62,39 +56,32 @@
       "name": "401 Unauthorized",
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1.2,
-      "position": [
-        680,
-        460
-      ]
+      "position": [680, 460]
     },
     {
       "parameters": {
         "mode": "runOnceForEachItem",
-        "jsCode": "// HANDOFF.md §3.2\n// 1. Find user where magic_token = {{ $json.body.token }} AND token_expires_at > now\n// 2. If not found → respond 401 { error: \"expired\" }\n// 3. Generate session_token = uuid(), session_expires_at = now + 30d\n// 4. Update user → session_token, session_expires_at, clear magic_token\n// 5. Respond { session_token, user: { id, name, role } }\nreturn [{ json: { error: \"not_implemented\", code: \"todo\" } }];"
+        "jsCode": "const rawCode = String($json.body?.code || \"\").trim();\nconst normalize = (value) => String(value || \"\").trim().toLowerCase();\nconst inputCode = normalize(rawCode);\n\nconst codes = {\n  samuel: normalize($env.CODE_SAMUEL),\n  mathilde: normalize($env.CODE_MATHILDE),\n  amis_samuel: normalize($env.CODE_AMIS_SAMUEL),\n  amis_mathilde: normalize($env.CODE_AMIS_MATHILDE),\n};\n\nconst role = Object.entries(codes).find(([, code]) => code && code === inputCode)?.[0];\nif (!role) {\n  return { json: { statusCode: 401, error: \"Code invalide\", code: \"invalid_group_code\" } };\n}\n\nconst apiKey = $env.AIRTABLE_PAT || $env.AIRTABLE_API_KEY;\nconst baseId = $env.AIRTABLE_BASE_ID;\nif (!apiKey || !baseId) {\n  return { json: { statusCode: 500, error: \"Airtable env vars missing\", code: \"airtable_config_missing\" } };\n}\n\nconst airtable = `https://api.airtable.com/v0/${baseId}`;\nconst formula = `{role} = '${role.replace(/'/g, \"\\\\'\")}'`;\nconst searchUrl = `${airtable}/Users?maxRecords=1&filterByFormula=${encodeURIComponent(formula)}`;\nconst lookup = await fetch(searchUrl, { headers: { Authorization: `Bearer ${apiKey}` } });\nif (!lookup.ok) {\n  return { json: { statusCode: 500, error: \"Airtable user lookup failed\", code: \"airtable_users_failed\" } };\n}\n\nconst data = await lookup.json();\nconst record = data.records?.[0];\nif (!record) {\n  return { json: { statusCode: 401, error: \"Aucun utilisateur pour ce groupe\", code: \"group_user_missing\" } };\n}\n\nconst sessionToken = crypto.randomUUID();\nconst expiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();\nconst patch = await fetch(`${airtable}/Users/${record.id}`, {\n  method: \"PATCH\",\n  headers: {\n    Authorization: `Bearer ${apiKey}`,\n    \"Content-Type\": \"application/json\"\n  },\n  body: JSON.stringify({\n    fields: {\n      session_token: sessionToken,\n      session_expires_at: expiresAt\n    }\n  })\n});\n\nif (!patch.ok) {\n  return { json: { statusCode: 500, error: \"Airtable session update failed\", code: \"airtable_session_failed\" } };\n}\n\nreturn {\n  json: {\n    session_token: sessionToken,\n    user: {\n      id: record.fields.id || record.id,\n      name: record.fields.name || role,\n      role\n    }\n  }\n};"
       },
       "id": "64713397-571e-48a3-b211-c43e749f3808",
-      "name": "TODO — Implement logic",
+      "name": "Verify Group Code",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [
-        900,
-        200
-      ]
+      "position": [900, 200]
     },
     {
       "parameters": {
         "respondWith": "json",
-        "responseBody": "={{ JSON.stringify($json) }}",
-        "options": {}
+        "responseBody": "={{ JSON.stringify($json.statusCode ? { error: $json.error, code: $json.code } : $json) }}",
+        "options": {
+          "responseCode": "={{ $json.statusCode || 200 }}"
+        }
       },
       "id": "79f0ff5d-0054-44e4-aff8-941c79c4d4ac",
       "name": "Respond",
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1.2,
-      "position": [
-        1120,
-        200
-      ]
+      "position": [1120, 200]
     }
   ],
   "connections": {
@@ -113,7 +100,7 @@
       "main": [
         [
           {
-            "node": "TODO — Implement logic",
+            "node": "Verify Group Code",
             "type": "main",
             "index": 0
           }
@@ -127,7 +114,7 @@
         ]
       ]
     },
-    "TODO — Implement logic": {
+    "Verify Group Code": {
       "main": [
         [
           {
@@ -146,6 +133,6 @@
   "active": false,
   "meta": {
     "templateCredsSetupCompleted": false,
-    "handoffSection": "HANDOFF.md §3"
+    "handoffSection": "code auth"
   }
 }

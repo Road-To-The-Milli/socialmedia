@@ -75,15 +75,6 @@ async function request<T>(
     body: body !== undefined ? JSON.stringify(body) : undefined,
   });
 
-  if (res.status === 401) {
-    clearSession();
-    if (typeof window !== "undefined" && !window.location.pathname.startsWith("/login")) {
-      const here = window.location.pathname + window.location.search;
-      window.location.href = `/login?redirect=${encodeURIComponent(here)}`;
-    }
-    throw new ApiError("Session expirée", 401, "unauthorized");
-  }
-
   let payload: unknown = null;
   const text = await res.text();
   if (text) {
@@ -92,6 +83,27 @@ async function request<T>(
     } catch {
       payload = text;
     }
+  }
+
+  if (res.status === 401) {
+    const err = (payload ?? {}) as { error?: string; code?: string };
+    const code = err.code || "unauthorized";
+    const shouldClearSession = [
+      "session_invalid",
+      "session_missing",
+      "session_expired",
+      "unauthorized",
+    ].includes(code);
+
+    if (shouldClearSession) {
+      clearSession();
+      if (typeof window !== "undefined" && !window.location.pathname.startsWith("/login")) {
+        const here = window.location.pathname + window.location.search;
+        window.location.href = `/login?redirect=${encodeURIComponent(here)}`;
+      }
+    }
+
+    throw new ApiError(err.error || "Session expirée", 401, code);
   }
 
   if (!res.ok) {
