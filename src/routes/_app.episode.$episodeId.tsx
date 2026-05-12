@@ -1,4 +1,4 @@
-import { createFileRoute, Link, notFound } from "@tanstack/react-router";
+﻿import { createFileRoute, Link, notFound } from "@tanstack/react-router";
 import { useState } from "react";
 import { Star, ArrowLeft, Music, MapPin, Calendar, Lock, Loader2 } from "lucide-react";
 import { toast } from "sonner";
@@ -13,10 +13,10 @@ export const Route = createFileRoute("/_app/episode/$episodeId")({
 const COUPLE: Role[] = ["samuel", "mathilde"];
 
 const ROLE_LABEL: Record<Role, { label: string; emoji: string }> = {
-  samuel: { label: "Samuel", emoji: "🎬" },
-  mathilde: { label: "Mathilde", emoji: "🌹" },
-  amis_samuel: { label: "Amis de Samuel", emoji: "🍻" },
-  amis_mathilde: { label: "Amis de Mathilde", emoji: "💅" },
+  samuel: { label: "Samuel", emoji: "ðŸŽ¬" },
+  mathilde: { label: "Mathilde", emoji: "ðŸŒ¹" },
+  amis_samuel: { label: "Amis de Samuel", emoji: "ðŸ»" },
+  amis_mathilde: { label: "Amis de Mathilde", emoji: "ðŸ’…" },
 };
 
 function EpisodeDetail() {
@@ -67,7 +67,7 @@ function EpisodeDetail() {
         </Link>
         <div className="absolute bottom-0 inset-x-0 p-6 sm:p-10 max-w-4xl mx-auto">
           <p className="text-xs uppercase tracking-[0.3em] text-primary font-bold mb-2">
-            S01 · ÉPISODE {String(ep.number).padStart(2, "0")}
+            S01 Â· Ã‰PISODE {String(ep.number).padStart(2, "0")}
           </p>
           <h1 className="text-3xl sm:text-5xl font-black tracking-tighter">{ep.title}</h1>
           <div className="flex flex-wrap gap-3 mt-3 text-sm text-muted-foreground">
@@ -119,8 +119,8 @@ function EpisodeDetail() {
               saving={saveReview.isPending}
               onSave={(draft) =>
                 saveReview.mutate(draft, {
-                  onSuccess: () => toast.success("Compte rendu enregistré"),
-                  onError: () => toast.error("Échec de l'enregistrement."),
+                  onSuccess: () => toast.success("Compte rendu enregistrÃ©"),
+                  onError: () => toast.error("Ã‰chec de l'enregistrement."),
                 })
               }
             />
@@ -130,8 +130,8 @@ function EpisodeDetail() {
 
       {myReview && !seasonUnlocked && couplePartner && (
         <p className="max-w-4xl mx-auto px-4 sm:px-6 -mt-4 pb-10 text-center text-xs text-muted-foreground">
-          ✨ Tu as livré ton compte rendu. Celui de {ROLE_LABEL[couplePartner].label} sera révélé
-          à la fin de la saison.
+          âœ¨ Tu as livrÃ© ton compte rendu. Celui de {ROLE_LABEL[couplePartner].label} sera rÃ©vÃ©lÃ©
+          Ã  la fin de la saison.
         </p>
       )}
     </div>
@@ -144,7 +144,7 @@ function LockedReviewPanel({ label }: { label: string }) {
       <Lock className="w-6 h-6 text-muted-foreground mx-auto mb-2" />
       <h3 className="font-bold mb-1">{label}</h3>
       <p className="text-sm text-muted-foreground">
-        🔒 Visible à la fin de la saison. Pas de spoilers.
+        ðŸ”’ Visible Ã  la fin de la saison. Pas de spoilers.
       </p>
     </div>
   );
@@ -205,7 +205,7 @@ function ReviewPanel({
               }}
               className="text-sm bg-primary text-primary-foreground px-4 py-2 rounded-md font-semibold"
             >
-              ✍ Écrire le mien
+              âœ Ã‰crire le mien
             </button>
           )}
         </div>
@@ -228,25 +228,33 @@ function ReviewPanel({
           )}
         </div>
         <Stars value={review.rating} />
-        <Field label="Moment préféré">{review.favorite_moment}</Field>
-        <Field label="Moment gênant">{review.awkward_moment}</Field>
-        <Field label="Citation drôle">{review.funny_quote}</Field>
-        <Field label="Résumé">{review.summary}</Field>
+        <Field label="Moment prÃ©fÃ©rÃ©">{review.favorite_moment}</Field>
+        <Field label="Moment gÃªnant">{review.awkward_moment}</Field>
+        <Field label="Citation drÃ´le">{review.funny_quote}</Field>
+        <Field label="Note de bas de page" large>{review.summary}</Field>
         <Field label="On le referait ?">
           {review.would_redo
-            ? { yes: "✅ Oui clairement", no: "❌ Non merci", maybe: "🤷 Peut-être" }[
+            ? { yes: "âœ… Oui clairement", no: "âŒ Non merci", maybe: "ðŸ¤· Peut-Ãªtre" }[
                 review.would_redo
               ]
-            : "—"}
+            : "â€”"}
         </Field>
         {review.song && (
           <a
             href={review.song}
             target="_blank"
             rel="noreferrer"
-            className="inline-flex items-center gap-2 mt-3 text-sm text-accent hover:underline"
+            className="mt-4 flex items-center gap-3 rounded-xl border border-accent/30 bg-accent/10 p-4 text-sm text-accent hover:bg-accent/15"
           >
-            <Music className="w-4 h-4" /> Écouter la chanson
+            <span className="inline-flex size-10 shrink-0 items-center justify-center rounded-lg bg-accent/15">
+              <Music className="w-5 h-5" />
+            </span>
+            <span>
+              <span className="block text-xs uppercase tracking-wider text-accent/80">
+                Musique de la date
+              </span>
+              <span className="font-semibold">Ouvrir le lien Spotify</span>
+            </span>
           </a>
         )}
       </div>
@@ -261,24 +269,19 @@ function ReviewPanel({
       </label>
       <Stars value={draft.rating} editable onChange={(v) => setDraft({ ...draft, rating: v })} />
       <Input
-        label="Moment préféré"
+        label="Moment prÃ©fÃ©rÃ©"
         value={draft.favorite_moment}
         onChange={(v) => setDraft({ ...draft, favorite_moment: v })}
       />
       <Input
-        label="Moment gênant"
+        label="Moment gÃªnant"
         value={draft.awkward_moment}
         onChange={(v) => setDraft({ ...draft, awkward_moment: v })}
       />
       <Input
-        label="Citation drôle"
+        label="Citation drÃ´le"
         value={draft.funny_quote}
         onChange={(v) => setDraft({ ...draft, funny_quote: v })}
-      />
-      <Textarea
-        label="Résumé libre"
-        value={draft.summary}
-        onChange={(v) => setDraft({ ...draft, summary: v })}
       />
       <label className="block text-xs uppercase tracking-wider text-muted-foreground mb-1 mt-3">
         On le referait ?
@@ -286,9 +289,9 @@ function ReviewPanel({
       <div className="flex gap-2 mb-3">
         {(
           [
-            ["yes", "✅ Oui"],
-            ["maybe", "🤷 Peut-être"],
-            ["no", "❌ Non"],
+            ["yes", "âœ… Oui"],
+            ["maybe", "ðŸ¤· Peut-Ãªtre"],
+            ["no", "âŒ Non"],
           ] as const
         ).map(([v, l]) => (
           <button
@@ -304,10 +307,30 @@ function ReviewPanel({
           </button>
         ))}
       </div>
+      <div className="mt-4 rounded-xl border border-accent/30 bg-accent/10 p-4">
+        <div className="mb-3 flex items-center gap-3">
+          <span className="inline-flex size-10 items-center justify-center rounded-lg bg-accent/15 text-accent">
+            <Music className="size-5" />
+          </span>
+          <div>
+            <h4 className="text-sm font-bold">Musique de la date</h4>
+            <p className="text-xs text-muted-foreground">
+              Colle ici un lien Spotify pour garder la bande-son de l'aventure.
+            </p>
+          </div>
+        </div>
       <Input
         label="Lien Spotify / YouTube"
         value={draft.song}
         onChange={(v) => setDraft({ ...draft, song: v })}
+        placeholder="https://open.spotify.com/..."
+      />
+      </div>
+      <Textarea
+        label="Grande note de fin"
+        value={draft.summary}
+        onChange={(v) => setDraft({ ...draft, summary: v })}
+        rows={7}
       />
       <div className="flex gap-2 mt-4">
         <button
@@ -315,7 +338,7 @@ function ReviewPanel({
           disabled={saving}
           className="flex-1 bg-primary text-primary-foreground font-bold py-2 rounded-md hover:bg-primary/90 disabled:opacity-40"
         >
-          {saving ? "Enregistrement…" : "Enregistrer"}
+          {saving ? "Enregistrementâ€¦" : "Enregistrer"}
         </button>
         <button
           onClick={() => setEditing(false)}
@@ -328,12 +351,20 @@ function ReviewPanel({
   );
 }
 
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
+function Field({
+  label,
+  children,
+  large = false,
+}: {
+  label: string;
+  children: React.ReactNode;
+  large?: boolean;
+}) {
   return (
-    <div className="mt-3">
+    <div className={large ? "mt-5 rounded-xl border border-border bg-background/40 p-4" : "mt-3"}>
       <p className="text-xs uppercase tracking-wider text-muted-foreground">{label}</p>
-      <p className="text-sm mt-0.5">
-        {children || <span className="text-muted-foreground">—</span>}
+      <p className={large ? "mt-2 whitespace-pre-wrap text-base leading-7" : "text-sm mt-0.5"}>
+        {children || <span className="text-muted-foreground">â€”</span>}
       </p>
     </div>
   );
@@ -343,10 +374,12 @@ function Input({
   label,
   value,
   onChange,
+  placeholder,
 }: {
   label: string;
   value: string;
   onChange: (v: string) => void;
+  placeholder?: string;
 }) {
   return (
     <div className="mt-3">
@@ -356,6 +389,7 @@ function Input({
       <input
         value={value}
         onChange={(e) => onChange(e.target.value)}
+        placeholder={placeholder}
         className="w-full bg-input/50 border border-border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
       />
     </div>
@@ -366,10 +400,12 @@ function Textarea({
   label,
   value,
   onChange,
+  rows = 3,
 }: {
   label: string;
   value: string;
   onChange: (v: string) => void;
+  rows?: number;
 }) {
   return (
     <div className="mt-3">
@@ -379,7 +415,7 @@ function Textarea({
       <textarea
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        rows={3}
+        rows={rows}
         className="w-full bg-input/50 border border-border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
       />
     </div>
@@ -415,3 +451,4 @@ function Stars({
     </div>
   );
 }
+

@@ -1,7 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState } from "react";
 import { toast } from "sonner";
-import { Loader2, MapPin, Calendar } from "lucide-react";
+import { ImagePlus, Loader2, MapPin, Calendar, Music, NotebookPen } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 import { useCreateEpisode, useEpisodes } from "@/lib/store";
 import type { EpisodeDraft } from "@/lib/types";
@@ -108,17 +108,17 @@ function Timeline() {
                       {ep.place}
                     </span>
                   </div>
-                  {ep.tags && ep.tags.length > 0 && (
-                    <div className="flex flex-wrap gap-1.5 mt-3">
-                      {ep.tags.map((tag) => (
-                        <span
-                          key={tag}
-                          className="px-2 py-0.5 rounded-full text-[10px] uppercase tracking-wider bg-secondary text-muted-foreground"
-                        >
-                          {tag}
-                        </span>
-                      ))}
-                    </div>
+                  {ep.notes && (
+                    <p className="mt-3 flex gap-2 line-clamp-2 text-sm text-muted-foreground">
+                      <NotebookPen className="mt-0.5 size-4 shrink-0" />
+                      <span>{ep.notes}</span>
+                    </p>
+                  )}
+                  {ep.music_url && (
+                    <span className="mt-3 inline-flex items-center gap-2 rounded-full bg-accent/10 px-3 py-1 text-xs font-semibold text-accent">
+                      <Music className="size-3.5" />
+                      Musique ajoutee
+                    </span>
                   )}
                 </div>
               </div>
@@ -141,8 +141,10 @@ function EpisodeForm({
   const [date, setDate] = useState("");
   const [place, setPlace] = useState("");
   const [duration, setDuration] = useState("");
-  const [tags, setTags] = useState("");
   const [coverUrl, setCoverUrl] = useState("");
+  const [notes, setNotes] = useState("");
+  const [musicUrl, setMusicUrl] = useState("");
+  const [showImageField, setShowImageField] = useState(false);
 
   const submit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -156,19 +158,19 @@ function EpisodeForm({
       date: trimmedDate,
       place: trimmedPlace,
       duration: duration.trim() || undefined,
-      tags: tags
-        .split(",")
-        .map((tag) => tag.trim())
-        .filter(Boolean),
       cover_url: coverUrl.trim() || undefined,
+      notes: notes.trim() || undefined,
+      music_url: musicUrl.trim() || undefined,
     });
 
     setTitle("");
     setDate("");
     setPlace("");
     setDuration("");
-    setTags("");
     setCoverUrl("");
+    setNotes("");
+    setMusicUrl("");
+    setShowImageField(false);
   };
 
   return (
@@ -197,15 +199,59 @@ function EpisodeForm({
         <Input label="Date" value={date} onChange={setDate} type="date" />
         <Input label="Lieu" value={place} onChange={setPlace} placeholder="Paris, Le Marais" />
         <Input label="Durée" value={duration} onChange={setDuration} placeholder="2h30" />
-        <Input label="Tags" value={tags} onChange={setTags} placeholder="Slow burn, fou rire" />
         <Input
-          label="Image"
-          value={coverUrl}
-          onChange={setCoverUrl}
-          placeholder="https://..."
+          label="Lien musique"
+          value={musicUrl}
+          onChange={setMusicUrl}
+          placeholder="https://open.spotify.com/..."
           type="url"
         />
       </div>
+      <div className="mt-4 rounded-xl border border-border bg-background/40 p-4">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <h3 className="text-sm font-bold">Image de l'aventure</h3>
+            <p className="text-xs text-muted-foreground">
+              Ajoute une photo ou une image pour illustrer cette date.
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={() => setShowImageField((v) => !v)}
+            className="inline-flex items-center justify-center gap-2 rounded-md border border-border px-3 py-2 text-sm font-semibold hover:bg-muted"
+          >
+            <ImagePlus className="size-4" />
+            {showImageField || coverUrl ? "Modifier l'image" : "Ajouter une image"}
+          </button>
+        </div>
+
+        {(showImageField || coverUrl) && (
+          <div className="mt-3 grid gap-3 md:grid-cols-[1fr_180px]">
+            <Input
+              label="Lien de l'image"
+              value={coverUrl}
+              onChange={setCoverUrl}
+              placeholder="https://..."
+              type="url"
+            />
+            <div className="min-h-28 overflow-hidden rounded-lg border border-border bg-muted/40">
+              {coverUrl ? (
+                <img src={coverUrl} alt="" className="h-full min-h-28 w-full object-cover" />
+              ) : (
+                <div className="flex h-full min-h-28 items-center justify-center text-xs text-muted-foreground">
+                  Apercu
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+      </div>
+      <Textarea
+        label="Notes"
+        value={notes}
+        onChange={setNotes}
+        placeholder="Ce qu'on veut retenir de cette date..."
+      />
     </form>
   );
 }
@@ -234,6 +280,33 @@ function Input({
         onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder}
         className="w-full bg-input/50 border border-border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+      />
+    </label>
+  );
+}
+
+function Textarea({
+  label,
+  value,
+  onChange,
+  placeholder,
+}: {
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+  placeholder?: string;
+}) {
+  return (
+    <label className="mt-3 block">
+      <span className="mb-1 block text-xs uppercase tracking-wider text-muted-foreground">
+        {label}
+      </span>
+      <textarea
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        placeholder={placeholder}
+        rows={5}
+        className="w-full resize-y rounded-lg border border-border bg-input/50 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
       />
     </label>
   );

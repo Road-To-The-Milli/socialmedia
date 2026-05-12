@@ -19,8 +19,9 @@ export interface Episode {
   date: string;
   place: string;
   duration?: string;
-  tags?: string[];
   cover_url?: string;
+  notes?: string;
+  music_url?: string;
 }
 
 export interface EpisodeDraft {
@@ -28,8 +29,9 @@ export interface EpisodeDraft {
   date: string;
   place: string;
   duration?: string;
-  tags?: string[];
   cover_url?: string;
+  notes?: string;
+  music_url?: string;
 }
 
 export type WouldRedo = "yes" | "no" | "maybe" | "";

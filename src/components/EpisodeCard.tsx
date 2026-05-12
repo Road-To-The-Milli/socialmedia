@@ -24,18 +24,6 @@ export function EpisodeCard({ ep, index = 0 }: { ep: Episode; index?: number }) 
         <div className="absolute top-2 left-2 px-2 py-1 rounded bg-primary text-primary-foreground text-xs font-bold tracking-wider">
           S01·E{String(ep.number).padStart(2, "0")}
         </div>
-        {ep.tags && ep.tags.length > 0 && (
-          <div className="absolute top-2 right-2 flex flex-wrap gap-1 max-w-[60%] justify-end">
-            {ep.tags.slice(0, 1).map((tag) => (
-              <span
-                key={tag}
-                className="px-2 py-0.5 rounded bg-black/70 text-[10px] uppercase tracking-wider font-semibold"
-              >
-                {tag}
-              </span>
-            ))}
-          </div>
-        )}
         <div className="absolute bottom-0 inset-x-0 p-3">
           <h3 className="font-bold text-base leading-tight line-clamp-2">{ep.title}</h3>
           <p className="text-xs text-muted-foreground mt-1">
