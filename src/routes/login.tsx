@@ -2,6 +2,7 @@
 import { useEffect, useState } from "react";
 import { Clapperboard, KeyRound, Loader2 } from "lucide-react";
 import { useAuth } from "@/lib/auth";
+import { ApiError } from "@/lib/api";
 
 export const Route = createFileRoute("/login")({
   validateSearch: (s: Record<string, unknown>) => ({
@@ -34,9 +35,14 @@ function LoginPage() {
     try {
       await loginWithCode(cleanCode);
       nav({ to: search.redirect || "/" });
-    } catch {
+    } catch (err) {
       setStatus("error");
-      setError("Code invalide. Verifie le code de ton groupe et reessaie.");
+      if (err instanceof ApiError) {
+        const detail = err.code ? ` (${err.code})` : "";
+        setError(`${err.message}${detail}`);
+        return;
+      }
+      setError("Impossible de verifier le code pour le moment.");
     }
   };
 

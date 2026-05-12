@@ -12,7 +12,10 @@
       "name": "Webhook",
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 2,
-      "position": [240, 300],
+      "position": [
+        240,
+        300
+      ],
       "webhookId": "f5a61e2f-3bfe-4ddc-a82f-2a04834dee64",
       "notes": "x-api-key required"
     },
@@ -27,7 +30,7 @@
             {
               "id": "d8b2b455-f055-4105-ac46-8359aefab2a0",
               "leftValue": "={{ $json.headers[\"x-api-key\"] }}",
-              "rightValue": "={{ $env.SHARED_API_KEY }}",
+              "rightValue": "a58d49ae13d73706115681d14de53bd6857a88652b6cca8669a290898fcaac64",
               "operator": {
                 "type": "string",
                 "operation": "equals"
@@ -42,7 +45,10 @@
       "name": "API Key Guard",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.2,
-      "position": [460, 300]
+      "position": [
+        460,
+        300
+      ]
     },
     {
       "parameters": {
@@ -56,18 +62,24 @@
       "name": "401 Unauthorized",
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1.2,
-      "position": [680, 460]
+      "position": [
+        680,
+        460
+      ]
     },
     {
       "parameters": {
         "mode": "runOnceForEachItem",
-        "jsCode": "const rawCode = String($json.body?.code || \"\").trim();\nconst normalize = (value) => String(value || \"\").trim().toLowerCase();\nconst inputCode = normalize(rawCode);\n\nconst codes = {\n  samuel: normalize($env.CODE_SAMUEL),\n  mathilde: normalize($env.CODE_MATHILDE),\n  amis_samuel: normalize($env.CODE_AMIS_SAMUEL),\n  amis_mathilde: normalize($env.CODE_AMIS_MATHILDE),\n};\n\nconst role = Object.entries(codes).find(([, code]) => code && code === inputCode)?.[0];\nif (!role) {\n  return { json: { statusCode: 401, error: \"Code invalide\", code: \"invalid_group_code\" } };\n}\n\nconst apiKey = $env.AIRTABLE_PAT || $env.AIRTABLE_API_KEY;\nconst baseId = $env.AIRTABLE_BASE_ID;\nif (!apiKey || !baseId) {\n  return { json: { statusCode: 500, error: \"Airtable env vars missing\", code: \"airtable_config_missing\" } };\n}\n\nconst airtable = `https://api.airtable.com/v0/${baseId}`;\nconst formula = `{role} = '${role.replace(/'/g, \"\\\\'\")}'`;\nconst searchUrl = `${airtable}/Users?maxRecords=1&filterByFormula=${encodeURIComponent(formula)}`;\nconst lookup = await fetch(searchUrl, { headers: { Authorization: `Bearer ${apiKey}` } });\nif (!lookup.ok) {\n  return { json: { statusCode: 500, error: \"Airtable user lookup failed\", code: \"airtable_users_failed\" } };\n}\n\nconst data = await lookup.json();\nconst record = data.records?.[0];\nif (!record) {\n  return { json: { statusCode: 401, error: \"Aucun utilisateur pour ce groupe\", code: \"group_user_missing\" } };\n}\n\nconst sessionToken = crypto.randomUUID();\nconst expiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();\nconst patch = await fetch(`${airtable}/Users/${record.id}`, {\n  method: \"PATCH\",\n  headers: {\n    Authorization: `Bearer ${apiKey}`,\n    \"Content-Type\": \"application/json\"\n  },\n  body: JSON.stringify({\n    fields: {\n      session_token: sessionToken,\n      session_expires_at: expiresAt\n    }\n  })\n});\n\nif (!patch.ok) {\n  return { json: { statusCode: 500, error: \"Airtable session update failed\", code: \"airtable_session_failed\" } };\n}\n\nreturn {\n  json: {\n    session_token: sessionToken,\n    user: {\n      id: record.fields.id || record.id,\n      name: record.fields.name || role,\n      role\n    }\n  }\n};"
+        "jsCode": "try {\n  const CONFIG = {\n    AIRTABLE_PAT: \"REPLACE_WITH_AIRTABLE_PAT\",\n    AIRTABLE_BASE_ID: \"REPLACE_WITH_AIRTABLE_BASE_ID\",\n    CODE_SAMUEL: \"nerve\",\n    CODE_MATHILDE: \"mathilde\",\n    CODE_AMIS_SAMUEL: \"amis-samuel\",\n    CODE_AMIS_MATHILDE: \"amis-mathilde\",\n  };\n\n  const request = this.helpers.httpRequest.bind(this.helpers);\n  const rawCode = String($json.body?.code || \"\").trim();\n  const normalize = (value) => String(value || \"\").trim().toLowerCase();\n  const inputCode = normalize(rawCode);\n\n  const codes = {\n    samuel: normalize(CONFIG.CODE_SAMUEL),\n    mathilde: normalize(CONFIG.CODE_MATHILDE),\n    amis_samuel: normalize(CONFIG.CODE_AMIS_SAMUEL),\n    amis_mathilde: normalize(CONFIG.CODE_AMIS_MATHILDE),\n  };\n\n  const role = Object.entries(codes).find(([, code]) => code && code === inputCode)?.[0];\n  if (!role) {\n    return { json: { statusCode: 401, error: \"Code invalide\", code: \"invalid_group_code\" } };\n  }\n\n  const apiKey = CONFIG.AIRTABLE_PAT;\n  const baseId = CONFIG.AIRTABLE_BASE_ID;\n  if (!apiKey || !baseId || apiKey.includes(\"REPLACE_WITH\") || baseId.includes(\"REPLACE_WITH\")) {\n    return { json: { statusCode: 500, error: \"Airtable config missing in n8n code node\", code: \"airtable_config_missing\" } };\n  }\n\n  const airtable = \"https://api.airtable.com/v0/\" + baseId;\n  const formula = \"LOWER({role}) = '\" + role.toLowerCase().replace(/'/g, \"\\'\") + \"'\";\n  const searchUrl = airtable + \"/Users?maxRecords=1&filterByFormula=\" + encodeURIComponent(formula);\n\n  let data;\n  try {\n    data = await request({\n      method: \"GET\",\n      url: searchUrl,\n      headers: { Authorization: \"Bearer \" + apiKey },\n      json: true,\n    });\n  } catch (error) {\n    return { json: { statusCode: 500, error: \"Airtable user lookup failed: \" + (error?.message || String(error)), code: \"airtable_users_failed\" } };\n  }\n\n  const record = data.records?.[0];\n  if (!record) {\n    return { json: { statusCode: 401, error: \"Aucun utilisateur pour ce groupe\", code: \"group_user_missing\" } };\n  }\n\n  const sessionToken = \"sess_\" + Date.now().toString(36) + \"_\" + Math.random().toString(36).slice(2);\n  const expiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();\n\n  try {\n    await request({\n      method: \"PATCH\",\n      url: airtable + \"/Users/\" + record.id,\n      headers: { Authorization: \"Bearer \" + apiKey },\n      body: {\n        fields: {\n          session_token: sessionToken,\n          session_expires_at: expiresAt,\n        },\n      },\n      json: true,\n    });\n  } catch (error) {\n    return { json: { statusCode: 500, error: \"Airtable session update failed: \" + (error?.message || String(error)), code: \"airtable_session_failed\" } };\n  }\n\n  return {\n    json: {\n      session_token: sessionToken,\n      user: {\n        id: record.fields.id || record.id,\n        name: record.fields.name || role,\n        role,\n      },\n    },\n  };\n} catch (error) {\n  return {\n    json: {\n      statusCode: 500,\n      error: error?.message || String(error),\n      code: \"auth_verify_unhandled_error\",\n    },\n  };\n}"
       },
       "id": "64713397-571e-48a3-b211-c43e749f3808",
       "name": "Verify Group Code",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [900, 200]
+      "position": [
+        900,
+        200
+      ]
     },
     {
       "parameters": {
@@ -81,7 +93,10 @@
       "name": "Respond",
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1.2,
-      "position": [1120, 200]
+      "position": [
+        1120,
+        200
+      ]
     }
   ],
   "connections": {
