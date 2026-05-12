@@ -1,7 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { toast } from "sonner";
-import { ImagePlus, Loader2, MapPin, Calendar, Music, NotebookPen } from "lucide-react";
+import { Camera, Loader2, MapPin, Calendar, Music, NotebookPen, Upload, X } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 import { useCreateEpisode, useEpisodes } from "@/lib/store";
 import type { EpisodeDraft } from "@/lib/types";
@@ -142,9 +142,43 @@ function EpisodeForm({
   const [place, setPlace] = useState("");
   const [duration, setDuration] = useState("");
   const [coverUrl, setCoverUrl] = useState("");
+  const [imageAttachment, setImageAttachment] = useState<EpisodeDraft["image_attachment"]>();
+  const [imagePreviewUrl, setImagePreviewUrl] = useState("");
   const [notes, setNotes] = useState("");
   const [musicUrl, setMusicUrl] = useState("");
   const [showImageField, setShowImageField] = useState(false);
+  const galleryInputRef = useRef<HTMLInputElement | null>(null);
+  const cameraInputRef = useRef<HTMLInputElement | null>(null);
+
+  const handleImageFile = (file?: File) => {
+    if (!file) return;
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error("Image trop lourde. Choisis une image de moins de 5 Mo.");
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = () => {
+      const result = String(reader.result || "");
+      const [, base64 = ""] = result.split(",");
+      setImageAttachment({
+        file: base64,
+        filename: file.name || `date-${Date.now()}.jpg`,
+        contentType: file.type || "image/jpeg",
+      });
+      setImagePreviewUrl(result);
+      setCoverUrl("");
+      setShowImageField(true);
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const clearImage = () => {
+    setImageAttachment(undefined);
+    setImagePreviewUrl("");
+    setCoverUrl("");
+    if (galleryInputRef.current) galleryInputRef.current.value = "";
+    if (cameraInputRef.current) cameraInputRef.current.value = "";
+  };
 
   const submit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -159,6 +193,7 @@ function EpisodeForm({
       place: trimmedPlace,
       duration: duration.trim() || undefined,
       cover_url: coverUrl.trim() || undefined,
+      image_attachment: imageAttachment,
       notes: notes.trim() || undefined,
       music_url: musicUrl.trim() || undefined,
     });
@@ -168,6 +203,7 @@ function EpisodeForm({
     setPlace("");
     setDuration("");
     setCoverUrl("");
+    clearImage();
     setNotes("");
     setMusicUrl("");
     setShowImageField(false);
@@ -212,31 +248,74 @@ function EpisodeForm({
           <div>
             <h3 className="text-sm font-bold">Image de l'aventure</h3>
             <p className="text-xs text-muted-foreground">
-              Ajoute une photo ou une image pour illustrer cette date.
+              Importe une image ou prends une photo directement depuis ton appareil.
             </p>
           </div>
-          <button
-            type="button"
-            onClick={() => setShowImageField((v) => !v)}
-            className="inline-flex items-center justify-center gap-2 rounded-md border border-border px-3 py-2 text-sm font-semibold hover:bg-muted"
-          >
-            <ImagePlus className="size-4" />
-            {showImageField || coverUrl ? "Modifier l'image" : "Ajouter une image"}
-          </button>
+          <div className="flex flex-wrap gap-2">
+            <button
+              type="button"
+              onClick={() => galleryInputRef.current?.click()}
+              className="inline-flex items-center justify-center gap-2 rounded-md border border-border px-3 py-2 text-sm font-semibold hover:bg-muted"
+            >
+              <Upload className="size-4" />
+              Importer
+            </button>
+            <button
+              type="button"
+              onClick={() => cameraInputRef.current?.click()}
+              className="inline-flex items-center justify-center gap-2 rounded-md bg-primary px-3 py-2 text-sm font-semibold text-primary-foreground hover:bg-primary/90"
+            >
+              <Camera className="size-4" />
+              Prendre une photo
+            </button>
+            <button
+              type="button"
+              onClick={() => setShowImageField(true)}
+              className="inline-flex items-center justify-center rounded-md border border-border px-3 py-2 text-sm font-semibold hover:bg-muted"
+            >
+              Coller un lien
+            </button>
+          </div>
         </div>
 
-        {(showImageField || coverUrl) && (
+        <input
+          ref={galleryInputRef}
+          type="file"
+          accept="image/*"
+          className="hidden"
+          onChange={(e) => handleImageFile(e.target.files?.[0])}
+        />
+        <input
+          ref={cameraInputRef}
+          type="file"
+          accept="image/*"
+          capture="environment"
+          className="hidden"
+          onChange={(e) => handleImageFile(e.target.files?.[0])}
+        />
+
+        {(showImageField || imagePreviewUrl || coverUrl) && (
           <div className="mt-3 grid gap-3 md:grid-cols-[1fr_180px]">
             <Input
-              label="Lien de l'image"
+              label="Lien de l'image (optionnel)"
               value={coverUrl}
               onChange={setCoverUrl}
-              placeholder="https://..."
+              placeholder="https://... si tu préfères une URL"
               type="url"
             />
-            <div className="min-h-28 overflow-hidden rounded-lg border border-border bg-muted/40">
-              {coverUrl ? (
-                <img src={coverUrl} alt="" className="h-full min-h-28 w-full object-cover" />
+            <div className="relative min-h-28 overflow-hidden rounded-lg border border-border bg-muted/40">
+              {imagePreviewUrl || coverUrl ? (
+                <>
+                  <img src={imagePreviewUrl || coverUrl} alt="" className="h-full min-h-28 w-full object-cover" />
+                  <button
+                    type="button"
+                    onClick={clearImage}
+                    className="absolute right-2 top-2 inline-flex size-7 items-center justify-center rounded-full bg-background/80 text-foreground shadow"
+                    aria-label="Retirer l'image"
+                  >
+                    <X className="size-4" />
+                  </button>
+                </>
               ) : (
                 <div className="flex h-full min-h-28 items-center justify-center text-xs text-muted-foreground">
                   Apercu

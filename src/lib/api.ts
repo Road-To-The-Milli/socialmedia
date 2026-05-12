@@ -2,9 +2,9 @@
  * Frontend ↔ n8n webhook client.
  *
  * Reads VITE_N8N_BASE_URL and VITE_N8N_API_KEY from the environment.
- * Attaches `x-api-key` on every request and `x-session-token` whenever a
- * session is present in localStorage. On 401 the session is cleared and the
- * browser is redirected to /login.
+ * Attaches `x-api-key` on every request and forwards the local session user
+ * whenever a session is present in localStorage. On 401 the session is cleared
+ * and the browser is redirected to /login.
  */
 
 const SESSION_KEY = "nc_session";
@@ -69,6 +69,11 @@ async function request<T>(
 
   const session = readSession();
   if (session?.session_token) headers["x-session-token"] = session.session_token;
+  if (session?.user) {
+    headers["x-user-id"] = session.user.id;
+    headers["x-user-name"] = session.user.name;
+    headers["x-user-role"] = session.user.role;
+  }
 
   const res = await fetch(`${getBaseUrl()}${path}`, {
     method,

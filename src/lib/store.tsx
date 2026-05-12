@@ -6,7 +6,7 @@ import {
   type UseQueryResult,
 } from "@tanstack/react-query";
 import { useEffect } from "react";
-import { api } from "./api";
+import { api, readSession } from "./api";
 import type {
   Episode,
   EpisodeDraft,
@@ -31,6 +31,46 @@ import type {
 const VOTE_LS_KEY = "nc_votes";
 const REFERENCE_STALE_TIME = 10 * 60 * 1000;
 const LIVE_STALE_TIME = 60 * 1000;
+const BUZZ_IDEA_PREFIX = "buzz-date-";
+
+const BUZZ_DATE_IDEAS: Idea[] = [
+  {
+    id: "buzz-date-photo-booth",
+    title: "Photo booth challenge dans Paris",
+    description:
+      "On se donne une liste de poses absurdes, on traverse 3 spots photogeniques et on finit avec un mini album de la date.",
+    proposed_by_id: "nous-et-chill",
+    proposed_by_name: "Nous & Chill",
+    status: "voting",
+    likes: ["trend_1", "trend_2", "trend_3", "trend_4", "trend_5"],
+    dislikes: [],
+    my_vote: null,
+  },
+  {
+    id: "buzz-date-mystery-menu",
+    title: "Menu mystere TikTok",
+    description:
+      "Chacun choisit une adresse vue partout, mais l'autre commande a l'aveugle. Bonus si le dessert devient une note de 10/10.",
+    proposed_by_id: "nous-et-chill",
+    proposed_by_name: "Nous & Chill",
+    status: "voting",
+    likes: ["trend_1", "trend_2", "trend_3", "trend_4"],
+    dislikes: [],
+    my_vote: null,
+  },
+  {
+    id: "buzz-date-ceramic-cafe",
+    title: "Ceramic cafe et playlist commune",
+    description:
+      "On peint chacun une tasse pour l'autre, puis on ajoute une musique Spotify qui represente le moment.",
+    proposed_by_id: "nous-et-chill",
+    proposed_by_name: "Nous & Chill",
+    status: "voting",
+    likes: ["trend_1", "trend_2", "trend_3"],
+    dislikes: [],
+    my_vote: null,
+  },
+];
 
 function readLocalVotes(): Record<string, string> {
   if (typeof window === "undefined") return {};
@@ -111,8 +151,12 @@ export function useIdeas(): UseQueryResult<Idea[]> {
     queryKey: queryKeys.ideas,
     staleTime: LIVE_STALE_TIME,
     queryFn: async () => {
-      const res = await api.get<{ ideas: Idea[] }>("/ideas");
-      return res.ideas;
+      try {
+        const res = await api.get<{ ideas: Idea[] }>("/ideas");
+        return mergeBuzzIdeas(res.ideas);
+      } catch {
+        return mergeBuzzIdeas([]);
+      }
     },
   });
 }
@@ -132,11 +176,17 @@ export function useCreateIdea() {
 export function useVoteIdea() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: ({ id, kind }: { id: string; kind: "like" | "dislike" | "clear" }) =>
-      api.post<{ idea: Idea }>(`/ideas/${id}/vote`, { kind }),
+    mutationFn: async ({ id, kind }: { id: string; kind: "like" | "dislike" | "clear" }) => {
+      if (isBuzzIdea(id)) {
+        const current = qc.getQueryData<Idea[]>(queryKeys.ideas)?.find((idea) => idea.id === id);
+        if (!current) throw new Error("Idee introuvable.");
+        return { idea: applyLocalIdeaVote(current, kind) };
+      }
+      return api.post<{ idea: Idea }>(`/ideas/${id}/vote`, { kind });
+    },
     onSuccess: (res) => {
       updateIdeaInCache(qc, res.idea);
-      void qc.invalidateQueries({ queryKey: queryKeys.ideas });
+      if (!isBuzzIdea(res.idea.id)) void qc.invalidateQueries({ queryKey: queryKeys.ideas });
     },
   });
 }
@@ -144,11 +194,17 @@ export function useVoteIdea() {
 export function useSetIdeaStatus() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: ({ id, status }: { id: string; status: IdeaStatus }) =>
-      api.patch<{ idea: Idea }>(`/ideas/${id}/status`, { status }),
+    mutationFn: async ({ id, status }: { id: string; status: IdeaStatus }) => {
+      if (isBuzzIdea(id)) {
+        const current = qc.getQueryData<Idea[]>(queryKeys.ideas)?.find((idea) => idea.id === id);
+        if (!current) throw new Error("Idee introuvable.");
+        return { idea: { ...current, status } };
+      }
+      return api.patch<{ idea: Idea }>(`/ideas/${id}/status`, { status });
+    },
     onSuccess: (res) => {
       updateIdeaInCache(qc, res.idea);
-      void qc.invalidateQueries({ queryKey: queryKeys.ideas });
+      if (!isBuzzIdea(res.idea.id)) void qc.invalidateQueries({ queryKey: queryKeys.ideas });
     },
   });
 }
@@ -211,6 +267,32 @@ function updateIdeaInCache(qc: QueryClient, idea: Idea): void {
   qc.setQueryData<Idea[]>(queryKeys.ideas, (ideas = []) =>
     ideas.map((current) => (current.id === idea.id ? idea : current)),
   );
+}
+
+function mergeBuzzIdeas(ideas: Idea[]): Idea[] {
+  const existingIds = new Set(ideas.map((idea) => idea.id));
+  const missingBuzzIdeas = BUZZ_DATE_IDEAS.filter((idea) => !existingIds.has(idea.id));
+  return [...missingBuzzIdeas, ...ideas];
+}
+
+function isBuzzIdea(id: string): boolean {
+  return id.startsWith(BUZZ_IDEA_PREFIX);
+}
+
+function applyLocalIdeaVote(idea: Idea, kind: "like" | "dislike" | "clear"): Idea {
+  const userId = readSession()?.user.id || "local-user";
+  const likes = idea.likes.filter((id) => id !== userId);
+  const dislikes = idea.dislikes.filter((id) => id !== userId);
+
+  if (kind === "like") likes.push(userId);
+  if (kind === "dislike") dislikes.push(userId);
+
+  return {
+    ...idea,
+    likes,
+    dislikes,
+    my_vote: kind === "clear" ? null : kind,
+  };
 }
 
 /**

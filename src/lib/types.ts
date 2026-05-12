@@ -30,6 +30,11 @@ export interface EpisodeDraft {
   place: string;
   duration?: string;
   cover_url?: string;
+  image_attachment?: {
+    file: string;
+    filename: string;
+    contentType: string;
+  };
   notes?: string;
   music_url?: string;
 }
