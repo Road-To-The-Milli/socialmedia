@@ -12,6 +12,7 @@ const SESSION_KEY = "nc_session";
 interface StoredSession {
   session_token: string;
   user: { id: string; name: string; role: string };
+  expires_at?: string;
 }
 
 export class ApiError extends Error {

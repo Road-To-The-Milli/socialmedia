@@ -9,6 +9,7 @@ export interface User {
 export interface Session {
   session_token: string;
   user: User;
+  expires_at?: string;
 }
 
 export interface Episode {
