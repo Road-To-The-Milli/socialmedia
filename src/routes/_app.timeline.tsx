@@ -145,7 +145,6 @@ function EpisodeForm({
   const [imageAttachment, setImageAttachment] = useState<EpisodeDraft["image_attachment"]>();
   const [imagePreviewUrl, setImagePreviewUrl] = useState("");
   const [notes, setNotes] = useState("");
-  const [musicUrl, setMusicUrl] = useState("");
   const [showImageField, setShowImageField] = useState(false);
   const galleryInputRef = useRef<HTMLInputElement | null>(null);
   const cameraInputRef = useRef<HTMLInputElement | null>(null);
@@ -195,7 +194,6 @@ function EpisodeForm({
       cover_url: coverUrl.trim() || undefined,
       image_attachment: imageAttachment,
       notes: notes.trim() || undefined,
-      music_url: musicUrl.trim() || undefined,
     });
 
     setTitle("");
@@ -205,7 +203,6 @@ function EpisodeForm({
     setCoverUrl("");
     clearImage();
     setNotes("");
-    setMusicUrl("");
     setShowImageField(false);
   };
 
@@ -235,13 +232,6 @@ function EpisodeForm({
         <Input label="Date" value={date} onChange={setDate} type="date" />
         <Input label="Lieu" value={place} onChange={setPlace} placeholder="Paris, Le Marais" />
         <Input label="Durée" value={duration} onChange={setDuration} placeholder="2h30" />
-        <Input
-          label="Lien musique"
-          value={musicUrl}
-          onChange={setMusicUrl}
-          placeholder="https://open.spotify.com/..."
-          type="url"
-        />
       </div>
       <div className="mt-4 rounded-xl border border-border bg-background/40 p-4">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -326,10 +316,10 @@ function EpisodeForm({
         )}
       </div>
       <Textarea
-        label="Notes"
+        label="Description"
         value={notes}
         onChange={setNotes}
-        placeholder="Ce qu'on veut retenir de cette date..."
+        placeholder="Decris l'episode, le contexte, les details importants..."
       />
     </form>
   );
