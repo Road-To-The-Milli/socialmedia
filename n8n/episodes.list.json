@@ -1,0 +1,151 @@
+{
+  "name": "GET /episodes",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "GET",
+        "path": "episodes",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "5c590670-4c4a-4a93-8b65-fb31b23554da",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        240,
+        300
+      ],
+      "webhookId": "fed0822b-38a1-4f4e-beb1-8ad32ec4678e",
+      "notes": "x-api-key (required), x-session-token (auth routes)"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "2899ac25-4b60-4343-999e-0e0b6baed3f8",
+              "leftValue": "={{ $json.headers[\"x-api-key\"] }}",
+              "rightValue": "={{ $env.SHARED_API_KEY }}",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "1a2bc977-1b10-4799-962b-3b26f393cb2f",
+      "name": "API Key Guard",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        460,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ error: \"unauthorized\", code: \"no_key\" }) }}",
+        "options": {
+          "responseCode": 401
+        }
+      },
+      "id": "6a023201-0f10-4a17-a06d-dc707b34e341",
+      "name": "401 Unauthorized",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.2,
+      "position": [
+        680,
+        460
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "// HANDOFF.md §3.5\n// 1. Airtable list Episodes sorted by number\n// 2. Respond { episodes: [...] }\nreturn [{ json: { episodes: [] } }];"
+      },
+      "id": "8c8cce4f-f465-4c0e-b3cd-bc017ff18f23",
+      "name": "TODO — Implement logic",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        900,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify($json) }}",
+        "options": {}
+      },
+      "id": "d822285b-e195-43c7-a1c1-37757c31cb30",
+      "name": "Respond",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.2,
+      "position": [
+        1120,
+        200
+      ]
+    }
+  ],
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "API Key Guard",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "API Key Guard": {
+      "main": [
+        [
+          {
+            "node": "TODO — Implement logic",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "401 Unauthorized",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "TODO — Implement logic": {
+      "main": [
+        [
+          {
+            "node": "Respond",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "active": false,
+  "meta": {
+    "templateCredsSetupCompleted": false,
+    "handoffSection": "HANDOFF.md §3"
+  }
+}

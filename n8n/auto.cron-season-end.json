@@ -1,0 +1,60 @@
+{
+  "name": "Cron quotidien — Bascule fin de saison",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 9 * * *"
+            }
+          ]
+        }
+      },
+      "id": "4cf6dd53-434e-4db6-9c2d-b36ce21e211c",
+      "name": "Schedule Trigger",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        240,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "// HANDOFF.md §4 cron quotidien\n// SI now >= Settings.season_end_date AND season_unlocked === false:\n//   1. Settings.season_unlocked = true\n//   2. Trigger workflow \"Generate Synthese\"\n//   3. Mail tous les users: \"🎟 Le grand reveal est dispo\"\nreturn [];"
+      },
+      "id": "c2331e1c-2197-419f-9014-d68c226b3358",
+      "name": "TODO — Implement automation",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        460,
+        300
+      ]
+    }
+  ],
+  "connections": {
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "TODO — Implement automation",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "active": false,
+  "meta": {
+    "handoffSection": "HANDOFF.md §4"
+  }
+}

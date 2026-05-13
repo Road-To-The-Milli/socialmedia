@@ -1,0 +1,322 @@
+import {
+  useMutation,
+  useQuery,
+  useQueryClient,
+  type QueryClient,
+  type UseQueryResult,
+} from "@tanstack/react-query";
+import { useEffect } from "react";
+import { api, readSession } from "./api";
+import type {
+  Episode,
+  EpisodeDraft,
+  Idea,
+  IdeaStatus,
+  ReviewDraft,
+  ReviewsResponse,
+  Synthese,
+  VoteQuestion,
+} from "./types";
+
+/**
+ * Server state for Nous & Chill.
+ *
+ * The local-storage cache that lived here previously is gone — every read
+ * goes through n8n, and the season-end privacy gate is enforced server-side.
+ * Anonymous absurd-vote choices are still tracked in localStorage purely to
+ * stop the same browser from voting twice and to highlight the option the
+ * user picked on reload.
+ */
+
+const VOTE_LS_KEY = "nc_votes";
+const REFERENCE_STALE_TIME = 10 * 60 * 1000;
+const LIVE_STALE_TIME = 60 * 1000;
+const BUZZ_IDEA_PREFIX = "buzz-date-";
+
+const BUZZ_DATE_IDEAS: Idea[] = [
+  {
+    id: "buzz-date-photo-booth",
+    title: "Photo booth challenge dans Paris",
+    description:
+      "On se donne une liste de poses absurdes, on traverse 3 spots photogeniques et on finit avec un mini album de la date.",
+    proposed_by_id: "nous-et-chill",
+    proposed_by_name: "Nous & Chill",
+    status: "voting",
+    likes: ["trend_1", "trend_2", "trend_3", "trend_4", "trend_5"],
+    dislikes: [],
+    my_vote: null,
+  },
+  {
+    id: "buzz-date-mystery-menu",
+    title: "Menu mystere TikTok",
+    description:
+      "Chacun choisit une adresse vue partout, mais l'autre commande a l'aveugle. Bonus si le dessert devient une note de 10/10.",
+    proposed_by_id: "nous-et-chill",
+    proposed_by_name: "Nous & Chill",
+    status: "voting",
+    likes: ["trend_1", "trend_2", "trend_3", "trend_4"],
+    dislikes: [],
+    my_vote: null,
+  },
+  {
+    id: "buzz-date-ceramic-cafe",
+    title: "Ceramic cafe et playlist commune",
+    description:
+      "On peint chacun une tasse pour l'autre, puis on ajoute une musique Spotify qui represente le moment.",
+    proposed_by_id: "nous-et-chill",
+    proposed_by_name: "Nous & Chill",
+    status: "voting",
+    likes: ["trend_1", "trend_2", "trend_3"],
+    dislikes: [],
+    my_vote: null,
+  },
+];
+
+function readLocalVotes(): Record<string, string> {
+  if (typeof window === "undefined") return {};
+  try {
+    const raw = localStorage.getItem(VOTE_LS_KEY);
+    return raw ? (JSON.parse(raw) as Record<string, string>) : {};
+  } catch {
+    return {};
+  }
+}
+
+function writeLocalVotes(map: Record<string, string>): void {
+  if (typeof window === "undefined") return;
+  localStorage.setItem(VOTE_LS_KEY, JSON.stringify(map));
+}
+
+export const queryKeys = {
+  episodes: ["episodes"] as const,
+  episodeReviews: (id: string) => ["episodes", id, "reviews"] as const,
+  ideas: ["ideas"] as const,
+  votes: ["votes"] as const,
+  synthese: ["synthese"] as const,
+};
+
+export function useEpisodes(): UseQueryResult<Episode[]> {
+  return useQuery({
+    queryKey: queryKeys.episodes,
+    staleTime: REFERENCE_STALE_TIME,
+    queryFn: async () => {
+      const res = await api.get<{ episodes: Episode[] }>("/episodes");
+      return [...res.episodes].sort((a, b) => a.number - b.number);
+    },
+  });
+}
+
+export function useCreateEpisode() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (input: EpisodeDraft) => {
+      const res = await api.post<{ episode?: Episode; error?: string }>("/episodes", input);
+      if (!res.episode) {
+        throw new Error(res.error || "La création d'épisode n'est pas encore branchée côté n8n.");
+      }
+      return { episode: res.episode };
+    },
+    onSuccess: (res) => {
+      qc.setQueryData<Episode[]>(queryKeys.episodes, (episodes = []) =>
+        [...episodes, res.episode].sort((a, b) => a.number - b.number),
+      );
+      void qc.invalidateQueries({ queryKey: queryKeys.episodes });
+    },
+  });
+}
+
+export function useEpisodeReviews(episodeId: string | undefined) {
+  return useQuery({
+    queryKey: episodeId ? queryKeys.episodeReviews(episodeId) : ["episodes", "_", "reviews"],
+    queryFn: () => api.get<ReviewsResponse>(`/episodes/${episodeId}/reviews`),
+    enabled: Boolean(episodeId),
+    staleTime: LIVE_STALE_TIME,
+  });
+}
+
+export function useSaveReview(episodeId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (draft: ReviewDraft) =>
+      api.post<{ review: unknown }>(`/episodes/${episodeId}/reviews`, draft),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: queryKeys.episodeReviews(episodeId) });
+      void qc.invalidateQueries({ queryKey: queryKeys.episodes });
+    },
+  });
+}
+
+export function useIdeas(): UseQueryResult<Idea[]> {
+  return useQuery({
+    queryKey: queryKeys.ideas,
+    staleTime: LIVE_STALE_TIME,
+    queryFn: async () => {
+      try {
+        const res = await api.get<{ ideas: Idea[] }>("/ideas");
+        return mergeBuzzIdeas(res.ideas);
+      } catch {
+        return mergeBuzzIdeas([]);
+      }
+    },
+  });
+}
+
+export function useCreateIdea() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (input: { title: string; description: string }) =>
+      api.post<{ idea: Idea }>("/ideas", input),
+    onSuccess: (res) => {
+      qc.setQueryData<Idea[]>(queryKeys.ideas, (ideas = []) => [res.idea, ...ideas]);
+      void qc.invalidateQueries({ queryKey: queryKeys.ideas });
+    },
+  });
+}
+
+export function useVoteIdea() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id, kind }: { id: string; kind: "like" | "dislike" | "clear" }) => {
+      if (isBuzzIdea(id)) {
+        const current = qc.getQueryData<Idea[]>(queryKeys.ideas)?.find((idea) => idea.id === id);
+        if (!current) throw new Error("Idee introuvable.");
+        return { idea: applyLocalIdeaVote(current, kind) };
+      }
+      return api.post<{ idea: Idea }>(`/ideas/${id}/vote`, { kind });
+    },
+    onSuccess: (res) => {
+      updateIdeaInCache(qc, res.idea);
+      if (!isBuzzIdea(res.idea.id)) void qc.invalidateQueries({ queryKey: queryKeys.ideas });
+    },
+  });
+}
+
+export function useSetIdeaStatus() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id, status }: { id: string; status: IdeaStatus }) => {
+      if (isBuzzIdea(id)) {
+        const current = qc.getQueryData<Idea[]>(queryKeys.ideas)?.find((idea) => idea.id === id);
+        if (!current) throw new Error("Idee introuvable.");
+        return { idea: { ...current, status } };
+      }
+      return api.patch<{ idea: Idea }>(`/ideas/${id}/status`, { status });
+    },
+    onSuccess: (res) => {
+      updateIdeaInCache(qc, res.idea);
+      if (!isBuzzIdea(res.idea.id)) void qc.invalidateQueries({ queryKey: queryKeys.ideas });
+    },
+  });
+}
+
+export function useVotes() {
+  return useQuery({
+    queryKey: queryKeys.votes,
+    staleTime: LIVE_STALE_TIME,
+    queryFn: async () => {
+      const res = await api.get<{ questions: VoteQuestion[] }>("/votes");
+      const local = readLocalVotes();
+      return res.questions.map((q) => ({
+        ...q,
+        my_choice: q.my_choice ?? local[q.id] ?? null,
+      }));
+    },
+  });
+}
+
+export function useCastVote() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ questionId, option }: { questionId: string; option: string }) => {
+      await api.post<{ ok: true }>(`/votes/${questionId}`, { option });
+      const map = readLocalVotes();
+      map[questionId] = option;
+      writeLocalVotes(map);
+      return { questionId, option };
+    },
+    onSuccess: ({ questionId, option }) => {
+      qc.setQueryData<VoteQuestion[]>(queryKeys.votes, (questions = []) =>
+        questions.map((q) =>
+          q.id === questionId
+            ? {
+                ...q,
+                my_choice: option,
+                total: q.my_choice ? q.total : q.total + 1,
+                results: {
+                  ...q.results,
+                  [option]: (q.results[option] ?? 0) + (q.my_choice ? 0 : 1),
+                },
+              }
+            : q,
+        ),
+      );
+      void qc.invalidateQueries({ queryKey: queryKeys.votes });
+    },
+  });
+}
+
+export function useSynthese(): UseQueryResult<Synthese> {
+  return useQuery({
+    queryKey: queryKeys.synthese,
+    staleTime: 5 * 60 * 1000,
+    queryFn: () => api.get<Synthese>("/synthese"),
+  });
+}
+
+function updateIdeaInCache(qc: QueryClient, idea: Idea): void {
+  qc.setQueryData<Idea[]>(queryKeys.ideas, (ideas = []) =>
+    ideas.map((current) => (current.id === idea.id ? idea : current)),
+  );
+}
+
+function mergeBuzzIdeas(ideas: Idea[]): Idea[] {
+  const existingIds = new Set(ideas.map((idea) => idea.id));
+  const missingBuzzIdeas = BUZZ_DATE_IDEAS.filter((idea) => !existingIds.has(idea.id));
+  return [...missingBuzzIdeas, ...ideas];
+}
+
+function isBuzzIdea(id: string): boolean {
+  return id.startsWith(BUZZ_IDEA_PREFIX);
+}
+
+function applyLocalIdeaVote(idea: Idea, kind: "like" | "dislike" | "clear"): Idea {
+  const userId = readSession()?.user.id || "local-user";
+  const likes = idea.likes.filter((id) => id !== userId);
+  const dislikes = idea.dislikes.filter((id) => id !== userId);
+
+  if (kind === "like") likes.push(userId);
+  if (kind === "dislike") dislikes.push(userId);
+
+  return {
+    ...idea,
+    likes,
+    dislikes,
+    my_vote: kind === "clear" ? null : kind,
+  };
+}
+
+/**
+ * Convenience: derive `season_unlocked` from the episode-reviews payload of
+ * any episode that has already been fetched. Falls back to `false` so the UI
+ * stays gated until we hear otherwise from the server.
+ */
+export function useSeasonUnlocked(episodeId: string | undefined): boolean {
+  const qc = useQueryClient();
+  const data = episodeId
+    ? qc.getQueryData<ReviewsResponse>(queryKeys.episodeReviews(episodeId))
+    : undefined;
+  return data?.season_unlocked ?? false;
+}
+
+/**
+ * Backward-compatible wrapper kept so __root.tsx can still mount a
+ * "data layer" provider. TanStack Query is the real provider — this just
+ * hydrates anonymous vote state on the client.
+ */
+export function StoreProvider({ children }: { children: React.ReactNode }) {
+  useEffect(() => {
+    // Touch localStorage once so SSR/CSR diff stays stable.
+    readLocalVotes();
+  }, []);
+  return <>{children}</>;
+}
