@@ -9,8 +9,8 @@ export const APP_CONFIG = {
     (typeof window !== "undefined" ? window.location.origin : "http://localhost:5173"),
   codes: {
     samuel: import.meta.env.VITE_CODE_SAMUEL || "nerve",
-    mathilde: import.meta.env.VITE_CODE_MATHILDE || "mathilde",
-    amisSamuel: import.meta.env.VITE_CODE_AMIS_SAMUEL || "amis-samuel",
-    amisMathilde: import.meta.env.VITE_CODE_AMIS_MATHILDE || "amis-mathilde",
+    mathilde: import.meta.env.VITE_CODE_MATHILDE || "samleboss",
+    amisSamuel: import.meta.env.VITE_CODE_AMIS_SAMUEL || "lesmeilleurs",
+    amisMathilde: import.meta.env.VITE_CODE_AMIS_MATHILDE || "quelcourage",
   },
 };
