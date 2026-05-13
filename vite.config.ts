@@ -14,7 +14,7 @@ export default defineConfig({
   },
   vite: {
     preview: {
-      allowedHosts: ["the.nouschill.fr", "nouschill.fr"],
+      allowedHosts: ["chill.samuelrilos.com","the.nouschill.fr", "nouschill.fr"],
     },
     server: {
       allowedHosts: ["the.nouschill.fr", "nouschill.fr"],
