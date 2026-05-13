@@ -1,4 +1,5 @@
 ﻿import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from "react";
+import { APP_CONFIG } from "@/config";
 import { clearSession, readSession, writeSession } from "./api";
 import type { User } from "./types";
 
@@ -15,10 +16,20 @@ const Ctx = createContext<AuthCtx | null>(null);
 const SESSION_DURATION_MS = 30 * 24 * 60 * 60 * 1000;
 
 const LOCAL_CODE_USERS: Array<User & { code: string | undefined }> = [
-  { id: "samuel", name: "Samuel", role: "samuel", code: import.meta.env.VITE_CODE_SAMUEL || "nerve" },
-  { id: "mathilde", name: "Mathilde", role: "mathilde", code: import.meta.env.VITE_CODE_MATHILDE || "mathilde" },
-  { id: "amis_samuel", name: "Amis de Samuel", role: "amis_samuel", code: import.meta.env.VITE_CODE_AMIS_SAMUEL || "amis-samuel" },
-  { id: "amis_mathilde", name: "Amis de Mathilde", role: "amis_mathilde", code: import.meta.env.VITE_CODE_AMIS_MATHILDE || "amis-mathilde" },
+  { id: "samuel", name: "Samuel", role: "samuel", code: APP_CONFIG.codes.samuel },
+  { id: "mathilde", name: "Mathilde", role: "mathilde", code: APP_CONFIG.codes.mathilde },
+  {
+    id: "amis_samuel",
+    name: "Amis de Samuel",
+    role: "amis_samuel",
+    code: APP_CONFIG.codes.amisSamuel,
+  },
+  {
+    id: "amis_mathilde",
+    name: "Amis de Mathilde",
+    role: "amis_mathilde",
+    code: APP_CONFIG.codes.amisMathilde,
+  },
 ];
 
 function normalizeCode(value: string | undefined) {

@@ -1,11 +1,13 @@
 /**
  * Frontend ↔ n8n webhook client.
  *
- * Reads VITE_N8N_BASE_URL and VITE_N8N_API_KEY from the environment.
+ * Uses app config defaults for the n8n webhook URL and API key.
  * Attaches `x-api-key` on every request and forwards the local session user
  * whenever a session is present in localStorage. On 401 the session is cleared
  * and the browser is redirected to /login.
  */
+
+import { APP_CONFIG } from "@/config";
 
 const SESSION_KEY = "nc_session";
 
@@ -26,15 +28,11 @@ export class ApiError extends Error {
 }
 
 function getBaseUrl(): string {
-  const url = import.meta.env.VITE_N8N_BASE_URL;
-  if (!url) throw new Error("VITE_N8N_BASE_URL is not set");
-  return url.replace(/\/$/, "");
+  return APP_CONFIG.n8nBaseUrl.replace(/\/$/, "");
 }
 
 function getApiKey(): string {
-  const key = import.meta.env.VITE_N8N_API_KEY;
-  if (!key) throw new Error("VITE_N8N_API_KEY is not set");
-  return key;
+  return APP_CONFIG.n8nApiKey;
 }
 
 export function readSession(): StoredSession | null {
