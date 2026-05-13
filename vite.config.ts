@@ -12,4 +12,12 @@ export default defineConfig({
   tanstackStart: {
     server: { entry: "server" },
   },
+  vite: {
+    preview: {
+      allowedHosts: ["the.nouschill.fr", "nouschill.fr"],
+    },
+    server: {
+      allowedHosts: ["the.nouschill.fr", "nouschill.fr"],
+    },
+  },
 });
