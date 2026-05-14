@@ -10,8 +10,10 @@ import { api, readSession } from "./api";
 import type {
   Episode,
   EpisodeDraft,
+  EpisodeMediaUpload,
   Idea,
   IdeaStatus,
+  Review,
   ReviewDraft,
   ReviewsResponse,
   Synthese,
@@ -31,6 +33,9 @@ import type {
 const VOTE_LS_KEY = "nc_votes";
 const LIVE_STALE_TIME = 60 * 1000;
 const BUZZ_IDEA_PREFIX = "buzz-date-";
+const MEDIA_UPSERT_PATH_PREFIX = "/e6d7fbaf-bbb1-4b28-8ae1-cdc0f5c5f6c1/episodes";
+const REVIEW_LIST_PATH_PREFIX = "/6483ce95-fa1a-4ffd-9982-3348d437d928/episodes";
+const REVIEW_UPSERT_PATH_PREFIX = "/e8f323ae-2f03-42d4-862e-fe88351c3dac/episodes";
 
 const BUZZ_DATE_IDEAS: Idea[] = [
   {
@@ -125,10 +130,24 @@ export function useCreateEpisode() {
   });
 }
 
+export function useUploadEpisodeMedia(episodeId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (files: EpisodeMediaUpload[]) =>
+      api.post<{ episode: Episode }>(`${MEDIA_UPSERT_PATH_PREFIX}/${episodeId}/media`, { files }),
+    onSuccess: (res) => {
+      qc.setQueryData<Episode[]>(queryKeys.episodes, (episodes = []) =>
+        episodes.map((episode) => (episode.id === episodeId ? res.episode : episode)),
+      );
+      void qc.invalidateQueries({ queryKey: queryKeys.episodes });
+    },
+  });
+}
+
 export function useEpisodeReviews(episodeId: string | undefined) {
   return useQuery({
     queryKey: episodeId ? queryKeys.episodeReviews(episodeId) : ["episodes", "_", "reviews"],
-    queryFn: () => api.get<ReviewsResponse>(`/episodes/${episodeId}/reviews`),
+    queryFn: () => api.get<ReviewsResponse>(`${REVIEW_LIST_PATH_PREFIX}/${episodeId}/reviews`),
     enabled: Boolean(episodeId),
     staleTime: LIVE_STALE_TIME,
   });
@@ -138,8 +157,26 @@ export function useSaveReview(episodeId: string) {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (draft: ReviewDraft) =>
-      api.post<{ review: unknown }>(`/episodes/${episodeId}/reviews`, draft),
-    onSuccess: () => {
+      api.post<{ review: Review }>(`${REVIEW_UPSERT_PATH_PREFIX}/${episodeId}/reviews`, draft),
+    onSuccess: (res) => {
+      qc.setQueryData<ReviewsResponse>(queryKeys.episodeReviews(episodeId), (current) => {
+        const existing = current?.reviews ?? [];
+        const reviews = existing.some(
+          (review) =>
+            review.id === res.review.id || review.author_role === res.review.author_role,
+        )
+          ? existing.map((review) =>
+              review.id === res.review.id || review.author_role === res.review.author_role
+                ? res.review
+                : review,
+            )
+          : [...existing, res.review];
+
+        return {
+          season_unlocked: current?.season_unlocked ?? false,
+          reviews,
+        };
+      });
       void qc.invalidateQueries({ queryKey: queryKeys.episodeReviews(episodeId) });
       void qc.invalidateQueries({ queryKey: queryKeys.episodes });
     },
