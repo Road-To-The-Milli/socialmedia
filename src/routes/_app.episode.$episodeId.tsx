@@ -243,6 +243,16 @@ function MediaSection({
             <MediaTile key={item.id || item.url || index} item={item} />
           ))}
         </div>
+      ) : canUpload ? (
+        <button
+          type="button"
+          onClick={() => inputRef.current?.click()}
+          disabled={saving}
+          className="mt-5 w-full rounded-xl border border-dashed border-border bg-card/60 p-6 text-center text-sm text-muted-foreground transition hover:border-primary hover:bg-primary/5 hover:text-foreground disabled:opacity-40"
+        >
+          <ImagePlus className="mx-auto mb-2 size-6" />
+          Ajouter des photos ou vidéos
+        </button>
       ) : (
         <div className="mt-5 rounded-xl border border-dashed border-border bg-card/60 p-6 text-center text-sm text-muted-foreground">
           <ImagePlus className="mx-auto mb-2 size-6" />

@@ -33,6 +33,7 @@ import type {
 const VOTE_LS_KEY = "nc_votes";
 const LIVE_STALE_TIME = 60 * 1000;
 const BUZZ_IDEA_PREFIX = "buzz-date-";
+const MEDIA_UPSERT_PATH_PREFIX = "/e6d7fbaf-bbb1-4b28-8ae1-cdc0f5c5f6c1/episodes";
 const REVIEW_LIST_PATH_PREFIX = "/6483ce95-fa1a-4ffd-9982-3348d437d928/episodes";
 const REVIEW_UPSERT_PATH_PREFIX = "/e8f323ae-2f03-42d4-862e-fe88351c3dac/episodes";
 
@@ -133,7 +134,7 @@ export function useUploadEpisodeMedia(episodeId: string) {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (files: EpisodeMediaUpload[]) =>
-      api.post<{ episode: Episode }>(`/episodes/${episodeId}/media`, { files }),
+      api.post<{ episode: Episode }>(`${MEDIA_UPSERT_PATH_PREFIX}/${episodeId}/media`, { files }),
     onSuccess: (res) => {
       qc.setQueryData<Episode[]>(queryKeys.episodes, (episodes = []) =>
         episodes.map((episode) => (episode.id === episodeId ? res.episode : episode)),
