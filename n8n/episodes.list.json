@@ -17,7 +17,7 @@
         300
       ],
       "webhookId": "fed0822b-38a1-4f4e-beb1-8ad32ec4678e",
-      "notes": "x-api-key (required), x-session-token (auth routes)"
+      "notes": "x-api-key required"
     },
     {
       "parameters": {
@@ -30,7 +30,7 @@
             {
               "id": "2899ac25-4b60-4343-999e-0e0b6baed3f8",
               "leftValue": "={{ $json.headers[\"x-api-key\"] }}",
-              "rightValue": "={{ $env.SHARED_API_KEY }}",
+              "rightValue": "={{ $env.SHARED_API_KEY || \"a58d49ae13d73706115681d14de53bd6857a88652b6cca8669a290898fcaac64\" }}",
               "operator": {
                 "type": "string",
                 "operation": "equals"
@@ -70,10 +70,10 @@
     {
       "parameters": {
         "mode": "runOnceForEachItem",
-        "jsCode": "// HANDOFF.md §3.5\n// 1. Airtable list Episodes sorted by number\n// 2. Respond { episodes: [...] }\nreturn [{ json: { episodes: [] } }];"
+        "jsCode": "const CONFIG = {\n  AIRTABLE_PAT: $env.AIRTABLE_PAT || $env.AIRTABLE_API_KEY || \"\",\n  AIRTABLE_BASE_ID: $env.AIRTABLE_BASE_ID || \"\",\n  AIRTABLE_EPISODE_IMAGE_FIELD: $env.AIRTABLE_EPISODE_IMAGE_FIELD || \"cover_image\",\n};\n\nconst request = this.helpers.httpRequest.bind(this.helpers);\nconst apiKey = String(CONFIG.AIRTABLE_PAT || \"\").trim();\nconst baseId = String(CONFIG.AIRTABLE_BASE_ID || \"\").trim();\n\nif (!apiKey || !baseId) {\n  return {\n    json: {\n      statusCode: 500,\n      error: \"Airtable config missing in n8n environment\",\n      code: \"airtable_config_missing\",\n    },\n  };\n}\n\nconst airtable = \"https://api.airtable.com/v0/\" + baseId;\nconst headers = { Authorization: \"Bearer \" + apiKey };\nconst fields = [\n  \"number\",\n  \"title\",\n  \"date\",\n  \"place\",\n  \"duration\",\n  \"cover_url\",\n  \"notes\",\n  \"music_url\",\n  CONFIG.AIRTABLE_EPISODE_IMAGE_FIELD,\n];\nconst fieldParams = fields\n  .filter(Boolean)\n  .map((field) => \"fields%5B%5D=\" + encodeURIComponent(field))\n  .join(\"&\");\n\nconst records = [];\nlet offset = \"\";\n\ntry {\n  do {\n    const url =\n      airtable +\n      \"/Episodes?\" +\n      fieldParams +\n      \"&sort%5B0%5D%5Bfield%5D=number&sort%5B0%5D%5Bdirection%5D=asc\" +\n      (offset ? \"&offset=\" + encodeURIComponent(offset) : \"\");\n\n    const data = await request({ method: \"GET\", url, headers, json: true });\n    records.push(...(data.records || []));\n    offset = data.offset || \"\";\n  } while (offset);\n} catch (error) {\n  return {\n    json: {\n      statusCode: 500,\n      error: \"Airtable episodes list failed: \" + (error?.message || String(error)),\n      code: \"airtable_episodes_failed\",\n    },\n  };\n}\n\nconst attachmentField = CONFIG.AIRTABLE_EPISODE_IMAGE_FIELD || \"cover_image\";\nconst episodes = records\n  .map((record) => {\n    const f = record.fields || {};\n    const attachments = Array.isArray(f[attachmentField]) ? f[attachmentField] : [];\n    return {\n      id: String(f.id || record.id),\n      number: Number(f.number || 0),\n      title: String(f.title || \"\"),\n      date: String(f.date || \"\"),\n      place: String(f.place || \"\"),\n      duration: String(f.duration || \"\"),\n      cover_url: String(f.cover_url || attachments[0]?.url || \"\"),\n      notes: String(f.notes || \"\"),\n      music_url: String(f.music_url || \"\"),\n    };\n  })\n  .filter((episode) => episode.title && episode.date && episode.place)\n  .sort((a, b) => a.number - b.number || a.date.localeCompare(b.date));\n\nreturn { json: { episodes } };"
       },
       "id": "8c8cce4f-f465-4c0e-b3cd-bc017ff18f23",
-      "name": "TODO — Implement logic",
+      "name": "List Episodes From Airtable",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
@@ -85,7 +85,9 @@
       "parameters": {
         "respondWith": "json",
         "responseBody": "={{ JSON.stringify($json) }}",
-        "options": {}
+        "options": {
+          "responseCode": "={{ $json.statusCode || 200 }}"
+        }
       },
       "id": "d822285b-e195-43c7-a1c1-37757c31cb30",
       "name": "Respond",
@@ -113,7 +115,7 @@
       "main": [
         [
           {
-            "node": "TODO — Implement logic",
+            "node": "List Episodes From Airtable",
             "type": "main",
             "index": 0
           }
@@ -127,7 +129,7 @@
         ]
       ]
     },
-    "TODO — Implement logic": {
+    "List Episodes From Airtable": {
       "main": [
         [
           {
@@ -146,6 +148,6 @@
   "active": false,
   "meta": {
     "templateCredsSetupCompleted": false,
-    "handoffSection": "HANDOFF.md §3"
+    "handoffSection": "HANDOFF.md 3.5"
   }
 }

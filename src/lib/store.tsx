@@ -29,7 +29,6 @@ import type {
  */
 
 const VOTE_LS_KEY = "nc_votes";
-const REFERENCE_STALE_TIME = 10 * 60 * 1000;
 const LIVE_STALE_TIME = 60 * 1000;
 const BUZZ_IDEA_PREFIX = "buzz-date-";
 
@@ -98,7 +97,8 @@ export const queryKeys = {
 export function useEpisodes(): UseQueryResult<Episode[]> {
   return useQuery({
     queryKey: queryKeys.episodes,
-    staleTime: REFERENCE_STALE_TIME,
+    staleTime: 0,
+    refetchOnMount: "always",
     queryFn: async () => {
       const res = await api.get<{ episodes: Episode[] }>("/episodes");
       return [...res.episodes].sort((a, b) => a.number - b.number);
