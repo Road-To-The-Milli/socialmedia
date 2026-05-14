@@ -13,10 +13,10 @@ export const Route = createFileRoute("/_app/episode/$episodeId")({
 const COUPLE: Role[] = ["samuel", "mathilde"];
 
 const ROLE_LABEL: Record<Role, { label: string; emoji: string }> = {
-  samuel: { label: "Samuel", emoji: "ðŸŽ¬" },
-  mathilde: { label: "Mathilde", emoji: "ðŸŒ¹" },
-  amis_samuel: { label: "Amis de Samuel", emoji: "ðŸ»" },
-  amis_mathilde: { label: "Amis de Mathilde", emoji: "ðŸ’…" },
+  samuel: { label: "Samuel", emoji: "🎬" },
+  mathilde: { label: "Mathilde", emoji: "🌹" },
+  amis_samuel: { label: "Amis de Samuel", emoji: "🍻" },
+  amis_mathilde: { label: "Amis de Mathilde", emoji: "💅" },
 };
 
 function EpisodeDetail() {
@@ -67,7 +67,7 @@ function EpisodeDetail() {
         </Link>
         <div className="absolute bottom-0 inset-x-0 p-6 sm:p-10 max-w-4xl mx-auto">
           <p className="text-xs uppercase tracking-[0.3em] text-primary font-bold mb-2">
-            S01 Â· Ã‰PISODE {String(ep.number).padStart(2, "0")}
+            S01 · ÉPISODE {String(ep.number).padStart(2, "0")}
           </p>
           <h1 className="text-3xl sm:text-5xl font-black tracking-tighter">{ep.title}</h1>
           <div className="flex flex-wrap gap-3 mt-3 text-sm text-muted-foreground">
@@ -119,8 +119,8 @@ function EpisodeDetail() {
               saving={saveReview.isPending}
               onSave={(draft) =>
                 saveReview.mutate(draft, {
-                  onSuccess: () => toast.success("Compte rendu enregistrÃ©"),
-                  onError: () => toast.error("Ã‰chec de l'enregistrement."),
+                  onSuccess: () => toast.success("Compte rendu enregistré"),
+                  onError: () => toast.error("Échec de l'enregistrement."),
                 })
               }
             />
@@ -130,8 +130,8 @@ function EpisodeDetail() {
 
       {myReview && !seasonUnlocked && couplePartner && (
         <p className="max-w-4xl mx-auto px-4 sm:px-6 -mt-4 pb-10 text-center text-xs text-muted-foreground">
-          âœ¨ Tu as livrÃ© ton compte rendu. Celui de {ROLE_LABEL[couplePartner].label} sera rÃ©vÃ©lÃ©
-          Ã  la fin de la saison.
+          ✨ Tu as livré ton compte rendu. Celui de {ROLE_LABEL[couplePartner].label} sera révélé
+          à la fin de la saison.
         </p>
       )}
     </div>
@@ -144,7 +144,7 @@ function LockedReviewPanel({ label }: { label: string }) {
       <Lock className="w-6 h-6 text-muted-foreground mx-auto mb-2" />
       <h3 className="font-bold mb-1">{label}</h3>
       <p className="text-sm text-muted-foreground">
-        ðŸ”’ Visible Ã  la fin de la saison. Pas de spoilers.
+        🔒 Visible à la fin de la saison. Pas de spoilers.
       </p>
     </div>
   );
@@ -205,7 +205,7 @@ function ReviewPanel({
               }}
               className="text-sm bg-primary text-primary-foreground px-4 py-2 rounded-md font-semibold"
             >
-              âœ Ã‰crire le mien
+              ✍ Écrire le mien
             </button>
           )}
         </div>
@@ -228,16 +228,16 @@ function ReviewPanel({
           )}
         </div>
         <Stars value={review.rating} />
-        <Field label="Moment prÃ©fÃ©rÃ©">{review.favorite_moment}</Field>
-        <Field label="Moment gÃªnant">{review.awkward_moment}</Field>
-        <Field label="Citation drÃ´le">{review.funny_quote}</Field>
+        <Field label="Moment préféré">{review.favorite_moment}</Field>
+        <Field label="Moment gênant">{review.awkward_moment}</Field>
+        <Field label="Citation drôle">{review.funny_quote}</Field>
         <Field label="Note de bas de page" large>{review.summary}</Field>
         <Field label="On le referait ?">
           {review.would_redo
-            ? { yes: "âœ… Oui clairement", no: "âŒ Non merci", maybe: "ðŸ¤· Peut-Ãªtre" }[
+            ? { yes: "✅ Oui clairement", no: "❌ Non merci", maybe: "🤷 Peut-être" }[
                 review.would_redo
               ]
-            : "â€”"}
+            : "—"}
         </Field>
         {review.song && (
           <a
@@ -269,17 +269,17 @@ function ReviewPanel({
       </label>
       <Stars value={draft.rating} editable onChange={(v) => setDraft({ ...draft, rating: v })} />
       <Input
-        label="Moment prÃ©fÃ©rÃ©"
+        label="Moment préféré"
         value={draft.favorite_moment}
         onChange={(v) => setDraft({ ...draft, favorite_moment: v })}
       />
       <Input
-        label="Moment gÃªnant"
+        label="Moment gênant"
         value={draft.awkward_moment}
         onChange={(v) => setDraft({ ...draft, awkward_moment: v })}
       />
       <Input
-        label="Citation drÃ´le"
+        label="Citation drôle"
         value={draft.funny_quote}
         onChange={(v) => setDraft({ ...draft, funny_quote: v })}
       />
@@ -289,9 +289,9 @@ function ReviewPanel({
       <div className="flex gap-2 mb-3">
         {(
           [
-            ["yes", "âœ… Oui"],
-            ["maybe", "ðŸ¤· Peut-Ãªtre"],
-            ["no", "âŒ Non"],
+            ["yes", "✅ Oui"],
+            ["maybe", "🤷 Peut-être"],
+            ["no", "❌ Non"],
           ] as const
         ).map(([v, l]) => (
           <button
@@ -338,7 +338,7 @@ function ReviewPanel({
           disabled={saving}
           className="flex-1 bg-primary text-primary-foreground font-bold py-2 rounded-md hover:bg-primary/90 disabled:opacity-40"
         >
-          {saving ? "Enregistrementâ€¦" : "Enregistrer"}
+          {saving ? "Enregistrement…" : "Enregistrer"}
         </button>
         <button
           onClick={() => setEditing(false)}
@@ -364,7 +364,7 @@ function Field({
     <div className={large ? "mt-5 rounded-xl border border-border bg-background/40 p-4" : "mt-3"}>
       <p className="text-xs uppercase tracking-wider text-muted-foreground">{label}</p>
       <p className={large ? "mt-2 whitespace-pre-wrap text-base leading-7" : "text-sm mt-0.5"}>
-        {children || <span className="text-muted-foreground">â€”</span>}
+        {children || <span className="text-muted-foreground">—</span>}
       </p>
     </div>
   );

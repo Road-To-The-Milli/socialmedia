@@ -69,7 +69,7 @@ function IdeasPage() {
           💡 La writers' room
         </p>
         <h1 className="text-3xl sm:text-5xl font-black tracking-tighter">
-          Pitch les prochains épisodes
+          Pitche les prochains épisodes
         </h1>
         <p className="text-muted-foreground mt-3">
           Like, dislike, programme. Démocratie absolue.

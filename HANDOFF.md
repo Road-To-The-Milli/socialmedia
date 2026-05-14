@@ -436,7 +436,7 @@ voté quoi.
   "questions": [
     {
       "id": "q_01",
-      "question": "Quel épisode est le plus likely à devenir un meme ?",
+      "question": "Quel épisode est le plus susceptible de devenir un mème ?",
       "options": ["E01 Premier Verre", "E02 Cinéma Mystère", "..."],
       "results": { "E01 Premier Verre": 3, "E02 Cinéma Mystère": 5 },
       "total": 8,

@@ -121,7 +121,7 @@
 
   "VoteQuestions": [
     {
-      "question": "Quel épisode est le plus likely à devenir un meme dans 6 mois ?",
+      "question": "Quel épisode est le plus susceptible de devenir un mème dans 6 mois ?",
       "options": ["E01 Premier Verre", "E02 Cinéma Mystère", "E03 Restaurant Trop Cher", "E04 Buttes-Chaumont"],
       "active": true
     },
@@ -155,7 +155,7 @@
 
   "Reviews": [
     {
-      "_comment": "Vide au seed. Les reviews sont créés par les utilisateurs depuis l'app."
+      "_comment": "Vide au seed. Les reviews sont créées par les utilisateurs depuis l'app."
     }
   ],
 

@@ -53,7 +53,7 @@ function Dashboard() {
               {featured.title}
             </h1>
             <p className="text-base sm:text-lg text-muted-foreground max-w-xl mb-6">
-              La série romantique non-officielle de Samuel &amp; Mathilde. {episodes.length}{" "}
+              La série romantique non officielle de Samuel &amp; Mathilde. {episodes.length}{" "}
               épisodes au compteur. Spoilers garantis.
             </p>
             <div className="flex flex-wrap gap-3">
