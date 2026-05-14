@@ -1,10 +1,29 @@
-﻿import { createFileRoute, Link, notFound } from "@tanstack/react-router";
-import { useState } from "react";
-import { Star, ArrowLeft, Music, MapPin, Calendar, Lock, Loader2 } from "lucide-react";
+import { createFileRoute, Link, notFound } from "@tanstack/react-router";
+import { useEffect, useRef, useState } from "react";
+import {
+  ArrowLeft,
+  Calendar,
+  Film,
+  ImagePlus,
+  Loader2,
+  Lock,
+  MapPin,
+  Music,
+  Star,
+  Upload,
+} from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "@/lib/auth";
-import { useEpisodeReviews, useEpisodes, useSaveReview } from "@/lib/store";
-import type { Review, ReviewDraft, Role, WouldRedo } from "@/lib/types";
+import { useEpisodeReviews, useEpisodes, useSaveReview, useUploadEpisodeMedia } from "@/lib/store";
+import type {
+  Episode,
+  EpisodeMedia,
+  EpisodeMediaUpload,
+  Review,
+  ReviewDraft,
+  Role,
+  WouldRedo,
+} from "@/lib/types";
 
 export const Route = createFileRoute("/_app/episode/$episodeId")({
   component: EpisodeDetail,
@@ -13,10 +32,10 @@ export const Route = createFileRoute("/_app/episode/$episodeId")({
 const COUPLE: Role[] = ["samuel", "mathilde"];
 
 const ROLE_LABEL: Record<Role, { label: string; emoji: string }> = {
-  samuel: { label: "Samuel", emoji: "ðŸŽ¬" },
-  mathilde: { label: "Mathilde", emoji: "ðŸŒ¹" },
-  amis_samuel: { label: "Amis de Samuel", emoji: "ðŸ»" },
-  amis_mathilde: { label: "Amis de Mathilde", emoji: "ðŸ’…" },
+  samuel: { label: "Samuel", emoji: "🎬" },
+  mathilde: { label: "Mathilde", emoji: "🌹" },
+  amis_samuel: { label: "Amis de Samuel", emoji: "🍻" },
+  amis_mathilde: { label: "Amis de Mathilde", emoji: "💅" },
 };
 
 function EpisodeDetail() {
@@ -25,6 +44,7 @@ function EpisodeDetail() {
   const episodesQuery = useEpisodes();
   const reviewsQuery = useEpisodeReviews(episodeId);
   const saveReview = useSaveReview(episodeId);
+  const uploadMedia = useUploadEpisodeMedia(episodeId);
 
   if (episodesQuery.isLoading || reviewsQuery.isLoading) {
     return (
@@ -46,6 +66,7 @@ function EpisodeDetail() {
     : null;
 
   const myRole = user?.role;
+  const canManageMedia = myRole === "samuel" || myRole === "mathilde";
 
   const reviewByRole = (role: Role) => reviews.find((r) => r.author_role === role);
   const myReview = myRole ? reviews.find((r) => r.author_role === myRole) : undefined;
@@ -67,7 +88,7 @@ function EpisodeDetail() {
         </Link>
         <div className="absolute bottom-0 inset-x-0 p-6 sm:p-10 max-w-4xl mx-auto">
           <p className="text-xs uppercase tracking-[0.3em] text-primary font-bold mb-2">
-            S01 Â· Ã‰PISODE {String(ep.number).padStart(2, "0")}
+            S01 · ÉPISODE {String(ep.number).padStart(2, "0")}
           </p>
           <h1 className="text-3xl sm:text-5xl font-black tracking-tighter">{ep.title}</h1>
           <div className="flex flex-wrap gap-3 mt-3 text-sm text-muted-foreground">
@@ -94,6 +115,19 @@ function EpisodeDetail() {
         </div>
       </div>
 
+      <MediaSection
+        episode={ep}
+        canUpload={canManageMedia}
+        saving={uploadMedia.isPending}
+        onUpload={(files) =>
+          uploadMedia.mutate(files, {
+            onSuccess: () => toast.success("Média ajouté à l'épisode"),
+            onError: (err) =>
+              toast.error(err instanceof Error ? err.message : "Impossible d'ajouter le média."),
+          })
+        }
+      />
+
       <div className="max-w-4xl mx-auto px-4 sm:px-6 py-10 grid md:grid-cols-2 gap-6">
         {COUPLE.map((role) => {
           const review = reviewByRole(role);
@@ -117,12 +151,11 @@ function EpisodeDetail() {
               review={review}
               editable={editable}
               saving={saveReview.isPending}
-              onSave={(draft) =>
-                saveReview.mutate(draft, {
-                  onSuccess: () => toast.success("Compte rendu enregistrÃ©"),
-                  onError: () => toast.error("Ã‰chec de l'enregistrement."),
-                })
-              }
+              onSave={async (draft) => {
+                const res = await saveReview.mutateAsync(draft);
+                toast.success("Compte rendu enregistré");
+                return res.review;
+              }}
             />
           );
         })}
@@ -130,12 +163,136 @@ function EpisodeDetail() {
 
       {myReview && !seasonUnlocked && couplePartner && (
         <p className="max-w-4xl mx-auto px-4 sm:px-6 -mt-4 pb-10 text-center text-xs text-muted-foreground">
-          âœ¨ Tu as livrÃ© ton compte rendu. Celui de {ROLE_LABEL[couplePartner].label} sera rÃ©vÃ©lÃ©
-          Ã  la fin de la saison.
+          ✨ Tu as livré ton compte rendu. Celui de {ROLE_LABEL[couplePartner].label} sera révélé
+          à la fin de la saison.
         </p>
       )}
     </div>
   );
+}
+
+function MediaSection({
+  episode,
+  canUpload,
+  saving,
+  onUpload,
+}: {
+  episode: Episode;
+  canUpload: boolean;
+  saving: boolean;
+  onUpload: (files: EpisodeMediaUpload[]) => void;
+}) {
+  const inputRef = useRef<HTMLInputElement | null>(null);
+  const media = episode.media ?? [];
+
+  const handleFiles = async (fileList: FileList | null) => {
+    const files = Array.from(fileList ?? []);
+    if (!files.length) return;
+
+    const allowed = files.filter((file) => {
+      const okType = file.type.startsWith("image/") || file.type.startsWith("video/");
+      const okSize = file.size <= 5 * 1024 * 1024;
+      if (!okType) toast.error(`${file.name} n'est ni une photo ni une vidéo.`);
+      if (!okSize) toast.error(`${file.name} dépasse 5 Mo.`);
+      return okType && okSize;
+    });
+
+    if (!allowed.length) return;
+    const payload = await Promise.all(allowed.map(fileToUpload));
+    onUpload(payload);
+    if (inputRef.current) inputRef.current.value = "";
+  };
+
+  return (
+    <section className="max-w-4xl mx-auto px-4 sm:px-6 pt-10">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <p className="mb-1 inline-flex items-center gap-2 text-xs font-bold uppercase tracking-[0.24em] text-primary">
+            <Film className="size-4" />
+            Souvenirs de l'épisode
+          </p>
+          <h2 className="text-2xl font-black tracking-tight">Photos & vidéos</h2>
+        </div>
+
+        {canUpload && (
+          <>
+            <input
+              ref={inputRef}
+              type="file"
+              accept="image/*,video/*"
+              multiple
+              className="hidden"
+              onChange={(event) => void handleFiles(event.target.files)}
+            />
+            <button
+              type="button"
+              onClick={() => inputRef.current?.click()}
+              disabled={saving}
+              className="inline-flex items-center justify-center gap-2 rounded-md bg-primary px-4 py-2 text-sm font-bold text-primary-foreground hover:bg-primary/90 disabled:opacity-40"
+            >
+              {saving ? <Loader2 className="size-4 animate-spin" /> : <Upload className="size-4" />}
+              Ajouter
+            </button>
+          </>
+        )}
+      </div>
+
+      {media.length ? (
+        <div className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-3">
+          {media.map((item, index) => (
+            <MediaTile key={item.id || item.url || index} item={item} />
+          ))}
+        </div>
+      ) : (
+        <div className="mt-5 rounded-xl border border-dashed border-border bg-card/60 p-6 text-center text-sm text-muted-foreground">
+          <ImagePlus className="mx-auto mb-2 size-6" />
+          Aucun souvenir ajouté pour cet épisode.
+        </div>
+      )}
+    </section>
+  );
+}
+
+function MediaTile({ item }: { item: EpisodeMedia }) {
+  return (
+    <a
+      href={item.url}
+      target="_blank"
+      rel="noreferrer"
+      className="group relative block aspect-square overflow-hidden rounded-lg border border-border bg-card"
+      title={item.filename}
+    >
+      {item.type === "video" ? (
+        <video src={item.url} className="h-full w-full object-cover" muted playsInline preload="metadata" />
+      ) : item.type === "image" ? (
+        <img src={item.url} alt={item.filename} className="h-full w-full object-cover" loading="lazy" />
+      ) : (
+        <div className="flex h-full w-full items-center justify-center text-muted-foreground">
+          <Film className="size-7" />
+        </div>
+      )}
+      <span className="absolute inset-x-0 bottom-0 truncate bg-black/70 px-2 py-1 text-xs text-white opacity-0 transition group-hover:opacity-100">
+        {item.filename}
+      </span>
+    </a>
+  );
+}
+
+function fileToUpload(file: File): Promise<EpisodeMediaUpload> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      const result = String(reader.result || "");
+      const [, base64 = ""] = result.split(",");
+      resolve({
+        file: base64,
+        filename: file.name || `media-${Date.now()}`,
+        contentType: file.type || "application/octet-stream",
+      });
+    };
+    reader.onerror = () => reject(new Error("Impossible de lire le fichier."));
+    reader.readAsDataURL(file);
+  });
 }
 
 function LockedReviewPanel({ label }: { label: string }) {
@@ -144,7 +301,7 @@ function LockedReviewPanel({ label }: { label: string }) {
       <Lock className="w-6 h-6 text-muted-foreground mx-auto mb-2" />
       <h3 className="font-bold mb-1">{label}</h3>
       <p className="text-sm text-muted-foreground">
-        ðŸ”’ Visible Ã  la fin de la saison. Pas de spoilers.
+        🔒 Visible à la fin de la saison. Pas de spoilers.
       </p>
     </div>
   );
@@ -184,13 +341,20 @@ function ReviewPanel({
   review?: Review;
   editable: boolean;
   saving: boolean;
-  onSave: (r: ReviewDraft) => void;
+  onSave: (r: ReviewDraft) => Promise<Review>;
 }) {
   const [editing, setEditing] = useState(!review && editable);
   const [draft, setDraft] = useState<ReviewDraft>(reviewToDraft(review));
+  const [savedReview, setSavedReview] = useState<Review | undefined>(review);
+  const displayedReview = savedReview ?? review;
+
+  useEffect(() => {
+    setSavedReview(review);
+    if (review) setDraft(reviewToDraft(review));
+  }, [review]);
 
   if (!editing) {
-    if (!review) {
+    if (!displayedReview) {
       return (
         <div className="bg-card border border-dashed border-border rounded-xl p-6 text-center">
           <h3 className="font-bold mb-1">{label}</h3>
@@ -205,7 +369,7 @@ function ReviewPanel({
               }}
               className="text-sm bg-primary text-primary-foreground px-4 py-2 rounded-md font-semibold"
             >
-              âœ Ã‰crire le mien
+              ✍ Écrire le mien
             </button>
           )}
         </div>
@@ -218,30 +382,30 @@ function ReviewPanel({
           {editable && (
             <button
               onClick={() => {
-                setDraft(reviewToDraft(review));
+                setDraft(reviewToDraft(displayedReview));
                 setEditing(true);
               }}
               className="text-xs text-muted-foreground hover:text-foreground"
             >
-              modifier
+              Modifier
             </button>
           )}
         </div>
-        <Stars value={review.rating} />
-        <Field label="Moment prÃ©fÃ©rÃ©">{review.favorite_moment}</Field>
-        <Field label="Moment gÃªnant">{review.awkward_moment}</Field>
-        <Field label="Citation drÃ´le">{review.funny_quote}</Field>
-        <Field label="Note de bas de page" large>{review.summary}</Field>
+        <Stars value={displayedReview.rating} />
+        <Field label="Moment préféré">{displayedReview.favorite_moment}</Field>
+        <Field label="Moment gênant">{displayedReview.awkward_moment}</Field>
+        <Field label="Citation drôle">{displayedReview.funny_quote}</Field>
+        <Field label="Note de bas de page" large>{displayedReview.summary}</Field>
         <Field label="On le referait ?">
-          {review.would_redo
-            ? { yes: "âœ… Oui clairement", no: "âŒ Non merci", maybe: "ðŸ¤· Peut-Ãªtre" }[
-                review.would_redo
+          {displayedReview.would_redo
+            ? { yes: "✅ Oui clairement", no: "❌ Non merci", maybe: "🤷 Peut-être" }[
+                displayedReview.would_redo
               ]
-            : "â€”"}
+            : "—"}
         </Field>
-        {review.song && (
+        {displayedReview.song && (
           <a
-            href={review.song}
+            href={displayedReview.song}
             target="_blank"
             rel="noreferrer"
             className="mt-4 flex items-center gap-3 rounded-xl border border-accent/30 bg-accent/10 p-4 text-sm text-accent hover:bg-accent/15"
@@ -269,17 +433,17 @@ function ReviewPanel({
       </label>
       <Stars value={draft.rating} editable onChange={(v) => setDraft({ ...draft, rating: v })} />
       <Input
-        label="Moment prÃ©fÃ©rÃ©"
+        label="Moment préféré"
         value={draft.favorite_moment}
         onChange={(v) => setDraft({ ...draft, favorite_moment: v })}
       />
       <Input
-        label="Moment gÃªnant"
+        label="Moment gênant"
         value={draft.awkward_moment}
         onChange={(v) => setDraft({ ...draft, awkward_moment: v })}
       />
       <Input
-        label="Citation drÃ´le"
+        label="Citation drôle"
         value={draft.funny_quote}
         onChange={(v) => setDraft({ ...draft, funny_quote: v })}
       />
@@ -289,9 +453,9 @@ function ReviewPanel({
       <div className="flex gap-2 mb-3">
         {(
           [
-            ["yes", "âœ… Oui"],
-            ["maybe", "ðŸ¤· Peut-Ãªtre"],
-            ["no", "âŒ Non"],
+            ["yes", "✅ Oui"],
+            ["maybe", "🤷 Peut-être"],
+            ["no", "❌ Non"],
           ] as const
         ).map(([v, l]) => (
           <button
@@ -319,12 +483,12 @@ function ReviewPanel({
             </p>
           </div>
         </div>
-      <Input
-        label="Lien Spotify / YouTube"
-        value={draft.song}
-        onChange={(v) => setDraft({ ...draft, song: v })}
-        placeholder="https://open.spotify.com/..."
-      />
+        <Input
+          label="Lien Spotify / YouTube"
+          value={draft.song}
+          onChange={(v) => setDraft({ ...draft, song: v })}
+          placeholder="https://open.spotify.com/..."
+        />
       </div>
       <Textarea
         label="Grande note de fin"
@@ -334,11 +498,20 @@ function ReviewPanel({
       />
       <div className="flex gap-2 mt-4">
         <button
-          onClick={() => onSave(draft)}
+          onClick={async () => {
+            try {
+              const nextReview = await onSave(draft);
+              setSavedReview(nextReview);
+              setDraft(reviewToDraft(nextReview));
+              setEditing(false);
+            } catch (err) {
+              toast.error(err instanceof Error ? err.message : "Échec de l'enregistrement.");
+            }
+          }}
           disabled={saving}
           className="flex-1 bg-primary text-primary-foreground font-bold py-2 rounded-md hover:bg-primary/90 disabled:opacity-40"
         >
-          {saving ? "Enregistrementâ€¦" : "Enregistrer"}
+          {saving ? "Enregistrement…" : "Enregistrer"}
         </button>
         <button
           onClick={() => setEditing(false)}
@@ -364,7 +537,7 @@ function Field({
     <div className={large ? "mt-5 rounded-xl border border-border bg-background/40 p-4" : "mt-3"}>
       <p className="text-xs uppercase tracking-wider text-muted-foreground">{label}</p>
       <p className={large ? "mt-2 whitespace-pre-wrap text-base leading-7" : "text-sm mt-0.5"}>
-        {children || <span className="text-muted-foreground">â€”</span>}
+        {children || <span className="text-muted-foreground">—</span>}
       </p>
     </div>
   );
@@ -451,4 +624,3 @@ function Stars({
     </div>
   );
 }
-

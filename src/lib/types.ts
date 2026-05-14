@@ -20,8 +20,24 @@ export interface Episode {
   place: string;
   duration?: string;
   cover_url?: string;
+  media?: EpisodeMedia[];
   notes?: string;
   music_url?: string;
+}
+
+export interface EpisodeMedia {
+  id?: string;
+  url: string;
+  filename: string;
+  type: "image" | "video" | "file";
+  contentType?: string;
+  size?: number;
+}
+
+export interface EpisodeMediaUpload {
+  file: string;
+  filename: string;
+  contentType: string;
 }
 
 export interface EpisodeDraft {

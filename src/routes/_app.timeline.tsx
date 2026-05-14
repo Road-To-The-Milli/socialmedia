@@ -308,7 +308,7 @@ function EpisodeForm({
                 </>
               ) : (
                 <div className="flex h-full min-h-28 items-center justify-center text-xs text-muted-foreground">
-                  Apercu
+                  Aperçu
                 </div>
               )}
             </div>
@@ -319,7 +319,7 @@ function EpisodeForm({
         label="Description"
         value={notes}
         onChange={setNotes}
-        placeholder="Decris l'episode, le contexte, les details importants..."
+        placeholder="Décris l'épisode, le contexte, les détails importants..."
       />
     </form>
   );

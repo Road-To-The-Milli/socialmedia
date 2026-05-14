@@ -42,7 +42,7 @@ function LoginPage() {
         setError(`${err.message}${detail}`);
         return;
       }
-      setError("Impossible de verifier le code pour le moment.");
+      setError("Impossible de vérifier le code pour le moment.");
     }
   };
 
@@ -103,7 +103,7 @@ function LoginPage() {
             >
               {status === "submitting" ? (
                 <>
-                  <Loader2 className="w-4 h-4 animate-spin" /> Verification...
+                  <Loader2 className="w-4 h-4 animate-spin" /> Vérification...
                 </>
               ) : (
                 <>
@@ -115,7 +115,7 @@ function LoginPage() {
         </div>
 
         <p className="text-center text-xs text-muted-foreground mt-4">
-          Contenu reserve. Toute fuite entraine une annulation immediate de la saison.
+          Contenu réservé. Toute fuite entraîne une annulation immédiate de la saison.
         </p>
       </div>
     </div>
