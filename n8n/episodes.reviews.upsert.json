@@ -12,10 +12,7 @@
       "name": "Webhook",
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 2,
-      "position": [
-        240,
-        300
-      ],
+      "position": [240, 300],
       "webhookId": "e8f323ae-2f03-42d4-862e-fe88351c3dac",
       "notes": "x-api-key (required), x-session-token (auth routes)"
     },
@@ -45,10 +42,7 @@
       "name": "API Key Guard",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.2,
-      "position": [
-        460,
-        300
-      ]
+      "position": [460, 300]
     },
     {
       "parameters": {
@@ -62,10 +56,7 @@
       "name": "401 Unauthorized",
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1.2,
-      "position": [
-        680,
-        460
-      ]
+      "position": [680, 460]
     },
     {
       "parameters": {
@@ -76,10 +67,7 @@
       "name": "Session Lookup",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [
-        680,
-        200
-      ]
+      "position": [680, 200]
     },
     {
       "parameters": {
@@ -108,10 +96,7 @@
       "name": "Session Guard",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.2,
-      "position": [
-        820,
-        200
-      ]
+      "position": [820, 200]
     },
     {
       "parameters": {
@@ -125,24 +110,18 @@
       "name": "401 Session Expired",
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1.2,
-      "position": [
-        1040,
-        360
-      ]
+      "position": [1040, 360]
     },
     {
       "parameters": {
         "mode": "runOnceForEachItem",
-        "jsCode": "const CONFIG = {\n  AIRTABLE_PAT: $env.AIRTABLE_PAT || $env.AIRTABLE_API_KEY || \"\",\n  AIRTABLE_BASE_ID: $env.AIRTABLE_BASE_ID || \"\",\n  REVIEW_EPISODE_FIELD: $env.AIRTABLE_REVIEW_EPISODE_FIELD || \"episode\",\n  REVIEW_AUTHOR_FIELD: $env.AIRTABLE_REVIEW_AUTHOR_FIELD || \"author\",\n};\n\nconst request = this.helpers.httpRequest.bind(this.helpers);\nconst apiKey = String(CONFIG.AIRTABLE_PAT || \"\").trim();\nconst baseId = String(CONFIG.AIRTABLE_BASE_ID || \"\").trim();\nconst airtable = \"https://api.airtable.com/v0/\" + baseId;\nconst headers = { Authorization: \"Bearer \" + apiKey };\nconst episodeField = CONFIG.REVIEW_EPISODE_FIELD;\nconst authorField = CONFIG.REVIEW_AUTHOR_FIELD;\nconst REVIEW_FIELDS = [\n  episodeField,\n  authorField,\n  \"rating\",\n  \"favorite_moment\",\n  \"awkward_moment\",\n  \"funny_quote\",\n  \"summary\",\n  \"would_redo\",\n  \"song\",\n  \"author_role\",\n];\n\nif (!apiKey || !baseId) {\n  return { json: { statusCode: 500, error: \"Airtable config missing in n8n environment\", code: \"airtable_config_missing\" } };\n}\n\nconst escapeFormulaString = (value) => String(value || \"\").replace(/'/g, \"\\\\'\");\nconst fieldsQuery = (fields) => fields.map((field) => \"fields%5B%5D=\" + encodeURIComponent(field)).join(\"&\");\nconst linkedIds = (value) => Array.isArray(value) ? value.map(String) : value ? [String(value)] : [];\nconst first = (value) => Array.isArray(value) ? value[0] : value;\nconst roleLabel = (role) => ({\n  samuel: \"Samuel\",\n  mathilde: \"Mathilde\",\n  amis_samuel: \"Amis de Samuel\",\n  amis_mathilde: \"Amis de Mathilde\",\n}[role] || role || \"\");\n\nasync function findEpisodeRecord(id) {\n  const cleanId = String(id || \"\").trim();\n  if (!cleanId) return null;\n  try {\n    return await request({ method: \"GET\", url: airtable + \"/Episodes/\" + encodeURIComponent(cleanId), headers, json: true });\n  } catch {}\n\n  const formula = \"OR(RECORD_ID() = '\" + escapeFormulaString(cleanId) + \"', {id} = '\" + escapeFormulaString(cleanId) + \"')\";\n  const data = await request({\n    method: \"GET\",\n    url: airtable + \"/Episodes?maxRecords=1&filterByFormula=\" + encodeURIComponent(formula),\n    headers,\n    json: true,\n  });\n  return data.records?.[0] || null;\n}\n\nasync function findUserRecord(session) {\n  const userId = String(session?.id || \"\").trim();\n  const role = String(session?.role || \"\").trim().toLowerCase();\n  if (userId) {\n    try {\n      return await request({ method: \"GET\", url: airtable + \"/Users/\" + encodeURIComponent(userId), headers, json: true });\n    } catch {}\n  }\n\n  const formula = \"OR(RECORD_ID() = '\" + escapeFormulaString(userId) + \"', {id} = '\" + escapeFormulaString(userId) + \"', LOWER({role}) = '\" + escapeFormulaString(role) + \"')\";\n  const data = await request({\n    method: \"GET\",\n    url: airtable + \"/Users?maxRecords=1&filterByFormula=\" + encodeURIComponent(formula),\n    headers,\n    json: true,\n  });\n  return data.records?.[0] || null;\n}\n\nasync function listAllReviews() {\n  const records = [];\n  let offset = \"\";\n  do {\n    const url =\n      airtable +\n      \"/Reviews?\" +\n      fieldsQuery(REVIEW_FIELDS) +\n      \"&pageSize=100\" +\n      (offset ? \"&offset=\" + encodeURIComponent(offset) : \"\");\n    const data = await request({ method: \"GET\", url, headers, json: true });\n    records.push(...(data.records || []));\n    offset = data.offset || \"\";\n  } while (offset);\n  return records;\n}\n\nfunction reviewFromRecord(record, fallbackRole = \"\", fallbackName = \"\") {\n  const f = record.fields || {};\n  const role = String(first(f.author_role) || fallbackRole || \"\");\n  return {\n    id: record.id,\n    author_role: role,\n    author_name: String(first(f.author_name) || fallbackName || roleLabel(role)),\n    rating: Number(f.rating || 0),\n    favorite_moment: String(f.favorite_moment || \"\"),\n    awkward_moment: String(f.awkward_moment || \"\"),\n    funny_quote: String(f.funny_quote || \"\"),\n    summary: String(f.summary || \"\"),\n    would_redo: String(f.would_redo || \"\"),\n    song: String(f.song || \"\"),\n    updated_at: String(record.createdTime || \"\"),\n  };\n}\nconst session = $json.session;\nconst body = $json.body || {};\n\nif (![\"samuel\", \"mathilde\"].includes(session.role)) {\n  return { json: { statusCode: 403, error: \"forbidden\", code: \"review_write_forbidden\" } };\n}\n\nconst episode = await findEpisodeRecord($json.params?.id);\nif (!episode) {\n  return { json: { statusCode: 404, error: \"Episode not found\", code: \"episode_missing\" } };\n}\n\nconst user = await findUserRecord(session);\nif (!user) {\n  return { json: { statusCode: 401, error: \"User not found for this session\", code: \"session_user_missing\" } };\n}\n\nconst rating = Math.max(0, Math.min(5, Number(body.rating || 0)));\nconst wouldRedo = [\"yes\", \"no\", \"maybe\"].includes(String(body.would_redo || \"\")) ? String(body.would_redo) : \"\";\nconst fields = {\n  [episodeField]: [episode.id],\n  [authorField]: [user.id],\n  rating,\n  favorite_moment: String(body.favorite_moment || \"\"),\n  awkward_moment: String(body.awkward_moment || \"\"),\n  funny_quote: String(body.funny_quote || \"\"),\n  summary: String(body.summary || \"\"),\n  song: String(body.song || \"\"),\n};\nif (wouldRedo) fields.would_redo = wouldRedo;\n\nconst existing = (await listAllReviews()).find((record) => {\n  const f = record.fields || {};\n  return linkedIds(f[episodeField]).includes(episode.id) && linkedIds(f[authorField]).includes(user.id);\n});\n\nlet saved;\ntry {\n  if (existing) {\n    saved = await request({\n      method: \"PATCH\",\n      url: airtable + \"/Reviews/\" + existing.id,\n      headers,\n      body: { fields },\n      json: true,\n    });\n  } else {\n    saved = await request({\n      method: \"POST\",\n      url: airtable + \"/Reviews\",\n      headers,\n      body: { fields },\n      json: true,\n    });\n  }\n} catch (error) {\n  return { json: { statusCode: 500, error: \"Airtable review save failed: \" + (error?.message || String(error)), code: \"airtable_review_save_failed\" } };\n}\n\nreturn { json: { review: reviewFromRecord(saved, session.role, session.name) } };"
+        "jsCode": "const CONFIG = {\n  AIRTABLE_PAT: $env.AIRTABLE_PAT || $env.AIRTABLE_API_KEY || \"\",\n  AIRTABLE_BASE_ID: $env.AIRTABLE_BASE_ID || \"\",\n  REVIEW_EPISODE_FIELD: $env.AIRTABLE_REVIEW_EPISODE_FIELD || \"episode\",\n  REVIEW_AUTHOR_FIELD: $env.AIRTABLE_REVIEW_AUTHOR_FIELD || \"author\",\n};\n\nconst request = this.helpers.httpRequest.bind(this.helpers);\nconst apiKey = String(CONFIG.AIRTABLE_PAT || \"\").trim();\nconst baseId = String(CONFIG.AIRTABLE_BASE_ID || \"\").trim();\nconst airtable = \"https://api.airtable.com/v0/\" + baseId;\nconst headers = { Authorization: \"Bearer \" + apiKey };\nconst episodeField = CONFIG.REVIEW_EPISODE_FIELD;\nconst authorField = CONFIG.REVIEW_AUTHOR_FIELD;\nconst REVIEW_FIELDS = [\n  episodeField,\n  authorField,\n  \"rating\",\n  \"favorite_moment\",\n  \"awkward_moment\",\n  \"funny_quote\",\n  \"summary\",\n  \"would_redo\",\n  \"song\",\n  \"author_role\",\n];\n\nif (!apiKey || !baseId) {\n  return { json: { statusCode: 500, error: \"Airtable config missing in n8n environment\", code: \"airtable_config_missing\" } };\n}\n\nconst escapeFormulaString = (value) =\u003e String(value || \"\").replace(/\u0027/g, \"\\\\\u0027\");\nconst fieldsQuery = (fields) =\u003e fields.map((field) =\u003e \"fields%5B%5D=\" + encodeURIComponent(field)).join(\"\u0026\");\nconst linkedIds = (value) =\u003e Array.isArray(value) ? value.map(String) : value ? [String(value)] : [];\nconst first = (value) =\u003e Array.isArray(value) ? value[0] : value;\nconst roleLabel = (role) =\u003e ({\n  samuel: \"Samuel\",\n  mathilde: \"Mathilde\",\n  amis_samuel: \"Amis de Samuel\",\n  amis_mathilde: \"Amis de Mathilde\",\n}[role] || role || \"\");\n\nasync function findEpisodeRecord(id) {\n  const cleanId = String(id || \"\").trim();\n  if (!cleanId) return null;\n  try {\n    return await request({ method: \"GET\", url: airtable + \"/Episodes/\" + encodeURIComponent(cleanId), headers, json: true });\n  } catch {}\n\n  const recordIdFormula = \"RECORD_ID() = \u0027\" + escapeFormulaString(cleanId) + \"\u0027\";\n  try {\n    const data = await request({\n      method: \"GET\",\n      url: airtable + \"/Episodes?maxRecords=1\u0026filterByFormula=\" + encodeURIComponent(recordIdFormula),\n      headers,\n      json: true,\n    });\n    if (data.records?.[0]) return data.records[0];\n  } catch {}\n\n  try {\n    const customIdFormula = \"{id} = \u0027\" + escapeFormulaString(cleanId) + \"\u0027\";\n    const data = await request({\n      method: \"GET\",\n      url: airtable + \"/Episodes?maxRecords=1\u0026filterByFormula=\" + encodeURIComponent(customIdFormula),\n      headers,\n      json: true,\n    });\n    return data.records?.[0] || null;\n  } catch {}\n\n  return null;\n}\n\nasync function findUserRecord(session) {\n  const userId = String(session?.id || \"\").trim();\n  const role = String(session?.role || \"\").trim().toLowerCase();\n  if (userId) {\n    try {\n      return await request({ method: \"GET\", url: airtable + \"/Users/\" + encodeURIComponent(userId), headers, json: true });\n    } catch {}\n  }\n\n  const formula = \"OR(RECORD_ID() = \u0027\" + escapeFormulaString(userId) + \"\u0027, LOWER({role}) = \u0027\" + escapeFormulaString(role) + \"\u0027)\";\n  const data = await request({\n    method: \"GET\",\n    url: airtable + \"/Users?maxRecords=1\u0026filterByFormula=\" + encodeURIComponent(formula),\n    headers,\n    json: true,\n  });\n  return data.records?.[0] || null;\n}\n\nasync function listAllReviews() {\n  const records = [];\n  let offset = \"\";\n  do {\n    const url =\n      airtable +\n      \"/Reviews?\" +\n      fieldsQuery(REVIEW_FIELDS) +\n      \"\u0026pageSize=100\" +\n      (offset ? \"\u0026offset=\" + encodeURIComponent(offset) : \"\");\n    const data = await request({ method: \"GET\", url, headers, json: true });\n    records.push(...(data.records || []));\n    offset = data.offset || \"\";\n  } while (offset);\n  return records;\n}\n\nfunction reviewFromRecord(record, fallbackRole = \"\", fallbackName = \"\") {\n  const f = record.fields || {};\n  const role = String(first(f.author_role) || fallbackRole || \"\");\n  return {\n    id: record.id,\n    author_role: role,\n    author_name: String(first(f.author_name) || fallbackName || roleLabel(role)),\n    rating: Number(f.rating || 0),\n    favorite_moment: String(f.favorite_moment || \"\"),\n    awkward_moment: String(f.awkward_moment || \"\"),\n    funny_quote: String(f.funny_quote || \"\"),\n    summary: String(f.summary || \"\"),\n    would_redo: String(f.would_redo || \"\"),\n    song: String(f.song || \"\"),\n    updated_at: String(record.createdTime || \"\"),\n  };\n}\n\nasync function saveReviewRecord(existing, fields) {\n  const write = (nextFields) =\u003e existing\n    ? request({ method: \"PATCH\", url: airtable + \"/Reviews/\" + existing.id, headers, body: { fields: nextFields }, json: true })\n    : request({ method: \"POST\", url: airtable + \"/Reviews\", headers, body: { fields: nextFields }, json: true });\n\n  try {\n    return await write({ ...fields, author_role: session.role });\n  } catch (error) {\n    const message = String(error?.message || error || \"\");\n    if (!message.includes(\"author_role\")) throw error;\n    return await write(fields);\n  }\n}\n\nconst session = $json.session;\nconst body = $json.body || {};\n\nif (![\"samuel\", \"mathilde\"].includes(session.role)) {\n  return { json: { statusCode: 403, error: \"forbidden\", code: \"review_write_forbidden\" } };\n}\n\nconst episode = await findEpisodeRecord($json.params?.id);\nif (!episode) {\n  return { json: { statusCode: 404, error: \"Episode not found\", code: \"episode_missing\" } };\n}\n\nconst user = await findUserRecord(session);\nif (!user) {\n  return { json: { statusCode: 401, error: \"User not found for this session\", code: \"session_user_missing\" } };\n}\n\nconst rating = Math.max(0, Math.min(5, Number(body.rating || 0)));\nconst wouldRedo = [\"yes\", \"no\", \"maybe\"].includes(String(body.would_redo || \"\")) ? String(body.would_redo) : \"\";\nconst fields = {\n  [episodeField]: [episode.id],\n  [authorField]: [user.id],\n  rating,\n  favorite_moment: String(body.favorite_moment || \"\"),\n  awkward_moment: String(body.awkward_moment || \"\"),\n  funny_quote: String(body.funny_quote || \"\"),\n  summary: String(body.summary || \"\"),\n  song: String(body.song || \"\"),\n};\nif (wouldRedo) fields.would_redo = wouldRedo;\n\nconst existing = (await listAllReviews()).find((record) =\u003e {\n  const f = record.fields || {};\n  return linkedIds(f[episodeField]).includes(episode.id) \u0026\u0026 linkedIds(f[authorField]).includes(user.id);\n});\n\nlet saved;\ntry {\n  saved = await saveReviewRecord(existing, fields);\n} catch (error) {\n  return { json: { statusCode: 500, error: \"Airtable review save failed: \" + (error?.message || String(error)), code: \"airtable_review_save_failed\" } };\n}\n\nreturn { json: { review: reviewFromRecord(saved, session.role, session.name) } };"
       },
       "id": "757c48ea-5f4c-4b08-ba8b-ef1f404f43af",
       "name": "Upsert Review",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [
-        900,
-        200
-      ]
+      "position": [900, 200]
     },
     {
       "parameters": {
@@ -156,10 +135,7 @@
       "name": "Respond",
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1.2,
-      "position": [
-        1120,
-        200
-      ]
+      "position": [1120, 200]
     }
   ],
   "connections": {
@@ -240,6 +216,6 @@
   "active": false,
   "meta": {
     "templateCredsSetupCompleted": false,
-    "handoffSection": "HANDOFF.md §3"
+    "handoffSection": "HANDOFF.md Â§3"
   }
 }

@@ -1,0 +1,391 @@
+{
+  "name": "Ideas API",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "GET",
+        "path": "ideas",
+        "responseMode": "responseNode",
+        "options": {
+          "allowedOrigins": "*"
+        }
+      },
+      "id": "8f1e54b8-2e15-47a5-95aa-000000000101",
+      "name": "GET /ideas",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [180, 120],
+      "webhookId": "2d0a0c8f-0000-4000-9000-000000000101"
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "ideas",
+        "responseMode": "responseNode",
+        "options": {
+          "allowedOrigins": "*"
+        }
+      },
+      "id": "13db07a5-41dd-45f4-9777-000000000102",
+      "name": "POST /ideas",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [180, 280],
+      "webhookId": "2d0a0c8f-0000-4000-9000-000000000102"
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "ideas/:id/vote",
+        "responseMode": "responseNode",
+        "options": {
+          "allowedOrigins": "*"
+        }
+      },
+      "id": "8f3ae68b-625f-4d55-8e13-000000000103",
+      "name": "POST /ideas/:id/vote",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [180, 440],
+      "webhookId": "2d0a0c8f-0000-4000-9000-000000000103"
+    },
+    {
+      "parameters": {
+        "httpMethod": "PATCH",
+        "path": "ideas/:id/status",
+        "responseMode": "responseNode",
+        "options": {
+          "allowedOrigins": "*"
+        }
+      },
+      "id": "8091f2f5-03b3-4a9b-98e4-000000000104",
+      "name": "PATCH /ideas/:id/status",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [180, 600],
+      "webhookId": "2d0a0c8f-0000-4000-9000-000000000104"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "return { json: { ...$json, action: \"list\" } };"
+      },
+      "id": "a5f71c54-080a-4d36-a54e-000000000105",
+      "name": "Mark List",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [420, 120]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "return { json: { ...$json, action: \"create\" } };"
+      },
+      "id": "bdb96260-fec8-48f8-a81a-000000000106",
+      "name": "Mark Create",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [420, 280]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "return { json: { ...$json, action: \"vote\" } };"
+      },
+      "id": "2646df02-fbea-4efb-8ad4-000000000107",
+      "name": "Mark Vote",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [420, 440]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "return { json: { ...$json, action: \"status\" } };"
+      },
+      "id": "17abdd7d-52cb-42d4-a7c7-000000000108",
+      "name": "Mark Status",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [420, 600]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "5fe23846-9127-4119-b3d6-000000000110",
+              "leftValue": "={{ $json.headers[\"x-api-key\"] }}",
+              "rightValue": "={{ $env.SHARED_API_KEY || \"a58d49ae13d73706115681d14de53bd6857a88652b6cca8669a290898fcaac64\" }}",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "b9367204-0a68-48ff-824a-000000000109",
+      "name": "API Key Guard",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [680, 360]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ error: \"unauthorized\", code: \"no_key\" }) }}",
+        "options": {
+          "responseCode": 401
+        }
+      },
+      "id": "d01a3b91-7544-4677-aec2-000000000111",
+      "name": "401 Unauthorized",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.2,
+      "position": [920, 560]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const headers = $json.headers || {};\nconst role = String(headers[\"x-user-role\"] || \"\").trim().toLowerCase();\nconst id = String(headers[\"x-user-id\"] || role || \"\").trim();\nconst name = String(headers[\"x-user-name\"] || role || \"\").trim();\n\nif (!role) {\n  return { json: { statusCode: 401, error: \"expired\", code: \"session_missing\" } };\n}\n\nreturn {\n  json: {\n    action: $json.action,\n    session: { id, name, role },\n    params: $json.params || {},\n    body: $json.body || {},\n  },\n};"
+      },
+      "id": "18dfc93b-494b-4339-8995-000000000112",
+      "name": "Session Lookup",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [920, 320]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "ee0eac9a-948f-42b1-a96f-000000000114",
+              "leftValue": "={{ Boolean($json.session) }}",
+              "rightValue": "={{ true }}",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "118ef2dd-ed35-411a-a687-000000000113",
+      "name": "Session Guard",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [1160, 320]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ error: \"expired\", code: \"session_invalid\" }) }}",
+        "options": {
+          "responseCode": 401
+        }
+      },
+      "id": "d8f56a8c-c72a-4a95-a576-000000000115",
+      "name": "401 Session Expired",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.2,
+      "position": [1400, 520]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const CONFIG = {\n  AIRTABLE_PAT: $env.AIRTABLE_PAT || $env.AIRTABLE_API_KEY || \"\",\n  AIRTABLE_BASE_ID: $env.AIRTABLE_BASE_ID || \"\",\n  IDEA_TITLE_FIELD: $env.AIRTABLE_IDEA_TITLE_FIELD || \"title\",\n  IDEA_DESCRIPTION_FIELD: $env.AIRTABLE_IDEA_DESCRIPTION_FIELD || \"description\",\n  IDEA_STATUS_FIELD: $env.AIRTABLE_IDEA_STATUS_FIELD || \"status\",\n  IDEA_PROPOSED_BY_FIELD: $env.AIRTABLE_IDEA_PROPOSED_BY_FIELD || \"proposed_by\",\n  IDEA_LIKES_FIELD: $env.AIRTABLE_IDEA_LIKES_FIELD || \"likes\",\n  IDEA_DISLIKES_FIELD: $env.AIRTABLE_IDEA_DISLIKES_FIELD || \"dislikes\",\n};\n\nconst request = this.helpers.httpRequest.bind(this.helpers);\nconst apiKey = String(CONFIG.AIRTABLE_PAT || \"\").trim();\nconst baseId = String(CONFIG.AIRTABLE_BASE_ID || \"\").trim();\n\nif (!apiKey || !baseId) {\n  return { json: { statusCode: 500, error: \"Airtable config missing in n8n environment\", code: \"airtable_config_missing\" } };\n}\n\nconst airtable = \"https://api.airtable.com/v0/\" + baseId;\nconst headers = { Authorization: \"Bearer \" + apiKey };\nconst action = String($json.action || \"\");\nconst session = $json.session;\nconst body = $json.body || {};\nconst params = $json.params || {};\nconst titleField = CONFIG.IDEA_TITLE_FIELD;\nconst descriptionField = CONFIG.IDEA_DESCRIPTION_FIELD;\nconst statusField = CONFIG.IDEA_STATUS_FIELD;\nconst proposedByField = CONFIG.IDEA_PROPOSED_BY_FIELD;\nconst likesField = CONFIG.IDEA_LIKES_FIELD;\nconst dislikesField = CONFIG.IDEA_DISLIKES_FIELD;\nconst IDEA_FIELDS = [titleField, descriptionField, statusField, proposedByField, likesField, dislikesField];\n\nconst escapeFormulaString = (value) => String(value || \"\").replace(/'/g, \"\\\\'\");\nconst fieldsQuery = (fields) => fields.filter(Boolean).map((field) => \"fields%5B%5D=\" + encodeURIComponent(field)).join(\"&\");\nconst linkedIds = (value) => Array.isArray(value) ? value.map(String) : value ? [String(value)] : [];\nconst first = (value) => Array.isArray(value) ? value[0] : value;\nconst roleLabel = (role) => ({\n  samuel: \"Samuel\",\n  mathilde: \"Mathilde\",\n  amis_samuel: \"Amis de Samuel\",\n  amis_mathilde: \"Amis de Mathilde\",\n}[role] || role || \"\");\n\nasync function findUserRecord(currentSession) {\n  const userId = String(currentSession?.id || \"\").trim();\n  const role = String(currentSession?.role || \"\").trim().toLowerCase();\n  if (userId) {\n    try {\n      return await request({ method: \"GET\", url: airtable + \"/Users/\" + encodeURIComponent(userId), headers, json: true });\n    } catch {}\n  }\n\n  try {\n    const roleFormula = \"LOWER({role}) = '\" + escapeFormulaString(role) + \"'\";\n    const data = await request({ method: \"GET\", url: airtable + \"/Users?maxRecords=1&filterByFormula=\" + encodeURIComponent(roleFormula), headers, json: true });\n    if (data.records?.[0]) return data.records[0];\n  } catch {}\n\n  try {\n    const idFormula = \"{id} = '\" + escapeFormulaString(userId) + \"'\";\n    const data = await request({ method: \"GET\", url: airtable + \"/Users?maxRecords=1&filterByFormula=\" + encodeURIComponent(idFormula), headers, json: true });\n    return data.records?.[0] || null;\n  } catch {}\n\n  return null;\n}\n\nasync function findIdeaRecord(id) {\n  const cleanId = String(id || \"\").trim();\n  if (!cleanId) return null;\n  try {\n    return await request({ method: \"GET\", url: airtable + \"/Ideas/\" + encodeURIComponent(cleanId), headers, json: true });\n  } catch {}\n\n  try {\n    const recordIdFormula = \"RECORD_ID() = '\" + escapeFormulaString(cleanId) + \"'\";\n    const data = await request({ method: \"GET\", url: airtable + \"/Ideas?maxRecords=1&filterByFormula=\" + encodeURIComponent(recordIdFormula) + \"&\" + fieldsQuery(IDEA_FIELDS), headers, json: true });\n    if (data.records?.[0]) return data.records[0];\n  } catch {}\n\n  try {\n    const customIdFormula = \"{id} = '\" + escapeFormulaString(cleanId) + \"'\";\n    const data = await request({ method: \"GET\", url: airtable + \"/Ideas?maxRecords=1&filterByFormula=\" + encodeURIComponent(customIdFormula) + \"&\" + fieldsQuery(IDEA_FIELDS), headers, json: true });\n    return data.records?.[0] || null;\n  } catch {}\n\n  return null;\n}\n\nasync function listIdeaRecords() {\n  const records = [];\n  let offset = \"\";\n  do {\n    const url = airtable + \"/Ideas?\" + fieldsQuery(IDEA_FIELDS) + \"&pageSize=100\" + (offset ? \"&offset=\" + encodeURIComponent(offset) : \"\");\n    const data = await request({ method: \"GET\", url, headers, json: true });\n    records.push(...(data.records || []));\n    offset = data.offset || \"\";\n  } while (offset);\n  return records;\n}\n\nfunction ideaFromRecord(record, userRecord) {\n  const f = record.fields || {};\n  const userId = userRecord?.id || \"\";\n  const likes = linkedIds(f[likesField]);\n  const dislikes = linkedIds(f[dislikesField]);\n  return {\n    id: record.id,\n    title: String(f[titleField] || \"\"),\n    description: String(f[descriptionField] || \"\"),\n    proposed_by_id: first(f[proposedByField]) || \"\",\n    proposed_by_name: String(first(f.proposed_by_name) || roleLabel(session.role)),\n    status: String(f[statusField] || \"voting\"),\n    likes,\n    dislikes,\n    my_vote: likes.includes(userId) ? \"like\" : dislikes.includes(userId) ? \"dislike\" : null,\n  };\n}\n\nconst user = await findUserRecord(session);\nif (!user) {\n  return { json: { statusCode: 401, error: \"User not found for this session\", code: \"session_user_missing\" } };\n}\n\nif (action === \"list\") {\n  const ideas = (await listIdeaRecords()).map((record) => ideaFromRecord(record, user));\n  return { json: { ideas } };\n}\n\nif (action === \"create\") {\n  const title = String(body.title || \"\").trim();\n  const description = String(body.description || \"\").trim();\n  if (!title || !description) {\n    return { json: { statusCode: 400, error: \"title and description are required\", code: \"idea_invalid\" } };\n  }\n\n  let created;\n  try {\n    created = await request({\n      method: \"POST\",\n      url: airtable + \"/Ideas\",\n      headers,\n      body: { fields: { [titleField]: title, [descriptionField]: description, [statusField]: \"voting\", [proposedByField]: [user.id], [likesField]: [], [dislikesField]: [] } },\n      json: true,\n    });\n  } catch (error) {\n    return { json: { statusCode: 500, error: \"Airtable idea create failed: \" + (error?.message || String(error)), code: \"airtable_idea_create_failed\" } };\n  }\n  return { json: { idea: ideaFromRecord(created, user) } };\n}\n\nif (action === \"vote\") {\n  const kind = String(body.kind || \"\").trim();\n  if (![\"like\", \"dislike\", \"clear\"].includes(kind)) {\n    return { json: { statusCode: 400, error: \"kind must be like, dislike or clear\", code: \"idea_vote_invalid\" } };\n  }\n\n  const idea = await findIdeaRecord(params.id);\n  if (!idea) {\n    return { json: { statusCode: 404, error: \"Idea not found\", code: \"idea_missing\" } };\n  }\n\n  const f = idea.fields || {};\n  const likes = linkedIds(f[likesField]).filter((id) => id !== user.id);\n  const dislikes = linkedIds(f[dislikesField]).filter((id) => id !== user.id);\n  if (kind === \"like\") likes.push(user.id);\n  if (kind === \"dislike\") dislikes.push(user.id);\n\n  let updated;\n  try {\n    updated = await request({\n      method: \"PATCH\",\n      url: airtable + \"/Ideas/\" + idea.id,\n      headers,\n      body: { fields: { [likesField]: likes, [dislikesField]: dislikes } },\n      json: true,\n    });\n  } catch (error) {\n    return { json: { statusCode: 500, error: \"Airtable idea vote failed: \" + (error?.message || String(error)), code: \"airtable_idea_vote_failed\" } };\n  }\n  return { json: { idea: ideaFromRecord(updated, user) } };\n}\n\nif (action === \"status\") {\n  if (![\"samuel\", \"mathilde\"].includes(session.role)) {\n    return { json: { statusCode: 403, error: \"forbidden\", code: \"idea_status_forbidden\" } };\n  }\n\n  const status = String(body.status || \"\").trim();\n  if (![\"voting\", \"selected\", \"scheduled\", \"done\"].includes(status)) {\n    return { json: { statusCode: 400, error: \"invalid status\", code: \"idea_status_invalid\" } };\n  }\n\n  const idea = await findIdeaRecord(params.id);\n  if (!idea) {\n    return { json: { statusCode: 404, error: \"Idea not found\", code: \"idea_missing\" } };\n  }\n\n  let updated;\n  try {\n    updated = await request({ method: \"PATCH\", url: airtable + \"/Ideas/\" + idea.id, headers, body: { fields: { [statusField]: status } }, json: true });\n  } catch (error) {\n    return { json: { statusCode: 500, error: \"Airtable idea status failed: \" + (error?.message || String(error)), code: \"airtable_idea_status_failed\" } };\n  }\n  return { json: { idea: ideaFromRecord(updated, user) } };\n}\n\nreturn { json: { statusCode: 404, error: \"unknown ideas action\", code: \"ideas_action_missing\" } };"
+      },
+      "id": "ed3e6ca9-a910-42c5-a24c-000000000116",
+      "name": "Ideas API Logic",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1400, 300]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify($json) }}",
+        "options": {
+          "responseCode": "={{ $json.statusCode || 200 }}"
+        }
+      },
+      "id": "f549b5d8-a5f6-42dc-8769-000000000117",
+      "name": "Respond",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.2,
+      "position": [1640, 300]
+    }
+  ],
+  "connections": {
+    "GET /ideas": {
+      "main": [
+        [
+          {
+            "node": "Mark List",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "POST /ideas": {
+      "main": [
+        [
+          {
+            "node": "Mark Create",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "POST /ideas/:id/vote": {
+      "main": [
+        [
+          {
+            "node": "Mark Vote",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "PATCH /ideas/:id/status": {
+      "main": [
+        [
+          {
+            "node": "Mark Status",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Mark List": {
+      "main": [
+        [
+          {
+            "node": "API Key Guard",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Mark Create": {
+      "main": [
+        [
+          {
+            "node": "API Key Guard",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Mark Vote": {
+      "main": [
+        [
+          {
+            "node": "API Key Guard",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Mark Status": {
+      "main": [
+        [
+          {
+            "node": "API Key Guard",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "API Key Guard": {
+      "main": [
+        [
+          {
+            "node": "Session Lookup",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "401 Unauthorized",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Session Lookup": {
+      "main": [
+        [
+          {
+            "node": "Session Guard",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Session Guard": {
+      "main": [
+        [
+          {
+            "node": "Ideas API Logic",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "401 Session Expired",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Ideas API Logic": {
+      "main": [
+        [
+          {
+            "node": "Respond",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "active": false,
+  "meta": {
+    "templateCredsSetupCompleted": false,
+    "handoffSection": "custom Ideas API"
+  }
+}
