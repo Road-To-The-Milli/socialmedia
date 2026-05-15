@@ -14,7 +14,10 @@
       "name": "GET /ideas",
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 2,
-      "position": [180, 120],
+      "position": [
+        180,
+        120
+      ],
       "webhookId": "2d0a0c8f-0000-4000-9000-000000000101"
     },
     {
@@ -30,7 +33,10 @@
       "name": "POST /ideas",
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 2,
-      "position": [180, 280],
+      "position": [
+        180,
+        280
+      ],
       "webhookId": "2d0a0c8f-0000-4000-9000-000000000102"
     },
     {
@@ -46,7 +52,10 @@
       "name": "POST /ideas/:id/vote",
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 2,
-      "position": [180, 440],
+      "position": [
+        180,
+        440
+      ],
       "webhookId": "2d0a0c8f-0000-4000-9000-000000000103"
     },
     {
@@ -62,7 +71,10 @@
       "name": "PATCH /ideas/:id/status",
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 2,
-      "position": [180, 600],
+      "position": [
+        180,
+        600
+      ],
       "webhookId": "2d0a0c8f-0000-4000-9000-000000000104"
     },
     {
@@ -74,7 +86,10 @@
       "name": "Mark List",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [420, 120]
+      "position": [
+        420,
+        120
+      ]
     },
     {
       "parameters": {
@@ -85,7 +100,10 @@
       "name": "Mark Create",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [420, 280]
+      "position": [
+        420,
+        280
+      ]
     },
     {
       "parameters": {
@@ -96,7 +114,10 @@
       "name": "Mark Vote",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [420, 440]
+      "position": [
+        420,
+        440
+      ]
     },
     {
       "parameters": {
@@ -107,7 +128,10 @@
       "name": "Mark Status",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [420, 600]
+      "position": [
+        420,
+        600
+      ]
     },
     {
       "parameters": {
@@ -135,7 +159,10 @@
       "name": "API Key Guard",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.2,
-      "position": [680, 360]
+      "position": [
+        680,
+        360
+      ]
     },
     {
       "parameters": {
@@ -149,7 +176,10 @@
       "name": "401 Unauthorized",
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1.2,
-      "position": [920, 560]
+      "position": [
+        920,
+        560
+      ]
     },
     {
       "parameters": {
@@ -160,7 +190,10 @@
       "name": "Session Lookup",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [920, 320]
+      "position": [
+        920,
+        320
+      ]
     },
     {
       "parameters": {
@@ -189,7 +222,10 @@
       "name": "Session Guard",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.2,
-      "position": [1160, 320]
+      "position": [
+        1160,
+        320
+      ]
     },
     {
       "parameters": {
@@ -203,18 +239,24 @@
       "name": "401 Session Expired",
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1.2,
-      "position": [1400, 520]
+      "position": [
+        1400,
+        520
+      ]
     },
     {
       "parameters": {
         "mode": "runOnceForEachItem",
-        "jsCode": "const CONFIG = {\n  AIRTABLE_PAT: $env.AIRTABLE_PAT || $env.AIRTABLE_API_KEY || \"\",\n  AIRTABLE_BASE_ID: $env.AIRTABLE_BASE_ID || \"\",\n  IDEA_TITLE_FIELD: $env.AIRTABLE_IDEA_TITLE_FIELD || \"title\",\n  IDEA_DESCRIPTION_FIELD: $env.AIRTABLE_IDEA_DESCRIPTION_FIELD || \"description\",\n  IDEA_STATUS_FIELD: $env.AIRTABLE_IDEA_STATUS_FIELD || \"status\",\n  IDEA_PROPOSED_BY_FIELD: $env.AIRTABLE_IDEA_PROPOSED_BY_FIELD || \"proposed_by\",\n  IDEA_LIKES_FIELD: $env.AIRTABLE_IDEA_LIKES_FIELD || \"likes\",\n  IDEA_DISLIKES_FIELD: $env.AIRTABLE_IDEA_DISLIKES_FIELD || \"dislikes\",\n};\n\nconst request = this.helpers.httpRequest.bind(this.helpers);\nconst apiKey = String(CONFIG.AIRTABLE_PAT || \"\").trim();\nconst baseId = String(CONFIG.AIRTABLE_BASE_ID || \"\").trim();\n\nif (!apiKey || !baseId) {\n  return { json: { statusCode: 500, error: \"Airtable config missing in n8n environment\", code: \"airtable_config_missing\" } };\n}\n\nconst airtable = \"https://api.airtable.com/v0/\" + baseId;\nconst headers = { Authorization: \"Bearer \" + apiKey };\nconst action = String($json.action || \"\");\nconst session = $json.session;\nconst body = $json.body || {};\nconst params = $json.params || {};\nconst titleField = CONFIG.IDEA_TITLE_FIELD;\nconst descriptionField = CONFIG.IDEA_DESCRIPTION_FIELD;\nconst statusField = CONFIG.IDEA_STATUS_FIELD;\nconst proposedByField = CONFIG.IDEA_PROPOSED_BY_FIELD;\nconst likesField = CONFIG.IDEA_LIKES_FIELD;\nconst dislikesField = CONFIG.IDEA_DISLIKES_FIELD;\nconst IDEA_FIELDS = [titleField, descriptionField, statusField, proposedByField, likesField, dislikesField];\n\nconst escapeFormulaString = (value) => String(value || \"\").replace(/'/g, \"\\\\'\");\nconst fieldsQuery = (fields) => fields.filter(Boolean).map((field) => \"fields%5B%5D=\" + encodeURIComponent(field)).join(\"&\");\nconst linkedIds = (value) => Array.isArray(value) ? value.map(String) : value ? [String(value)] : [];\nconst first = (value) => Array.isArray(value) ? value[0] : value;\nconst roleLabel = (role) => ({\n  samuel: \"Samuel\",\n  mathilde: \"Mathilde\",\n  amis_samuel: \"Amis de Samuel\",\n  amis_mathilde: \"Amis de Mathilde\",\n}[role] || role || \"\");\n\nasync function findUserRecord(currentSession) {\n  const userId = String(currentSession?.id || \"\").trim();\n  const role = String(currentSession?.role || \"\").trim().toLowerCase();\n  if (userId) {\n    try {\n      return await request({ method: \"GET\", url: airtable + \"/Users/\" + encodeURIComponent(userId), headers, json: true });\n    } catch {}\n  }\n\n  try {\n    const roleFormula = \"LOWER({role}) = '\" + escapeFormulaString(role) + \"'\";\n    const data = await request({ method: \"GET\", url: airtable + \"/Users?maxRecords=1&filterByFormula=\" + encodeURIComponent(roleFormula), headers, json: true });\n    if (data.records?.[0]) return data.records[0];\n  } catch {}\n\n  try {\n    const idFormula = \"{id} = '\" + escapeFormulaString(userId) + \"'\";\n    const data = await request({ method: \"GET\", url: airtable + \"/Users?maxRecords=1&filterByFormula=\" + encodeURIComponent(idFormula), headers, json: true });\n    return data.records?.[0] || null;\n  } catch {}\n\n  return null;\n}\n\nasync function findIdeaRecord(id) {\n  const cleanId = String(id || \"\").trim();\n  if (!cleanId) return null;\n  try {\n    return await request({ method: \"GET\", url: airtable + \"/Ideas/\" + encodeURIComponent(cleanId), headers, json: true });\n  } catch {}\n\n  try {\n    const recordIdFormula = \"RECORD_ID() = '\" + escapeFormulaString(cleanId) + \"'\";\n    const data = await request({ method: \"GET\", url: airtable + \"/Ideas?maxRecords=1&filterByFormula=\" + encodeURIComponent(recordIdFormula) + \"&\" + fieldsQuery(IDEA_FIELDS), headers, json: true });\n    if (data.records?.[0]) return data.records[0];\n  } catch {}\n\n  try {\n    const customIdFormula = \"{id} = '\" + escapeFormulaString(cleanId) + \"'\";\n    const data = await request({ method: \"GET\", url: airtable + \"/Ideas?maxRecords=1&filterByFormula=\" + encodeURIComponent(customIdFormula) + \"&\" + fieldsQuery(IDEA_FIELDS), headers, json: true });\n    return data.records?.[0] || null;\n  } catch {}\n\n  return null;\n}\n\nasync function listIdeaRecords() {\n  const records = [];\n  let offset = \"\";\n  do {\n    const url = airtable + \"/Ideas?\" + fieldsQuery(IDEA_FIELDS) + \"&pageSize=100\" + (offset ? \"&offset=\" + encodeURIComponent(offset) : \"\");\n    const data = await request({ method: \"GET\", url, headers, json: true });\n    records.push(...(data.records || []));\n    offset = data.offset || \"\";\n  } while (offset);\n  return records;\n}\n\nfunction ideaFromRecord(record, userRecord) {\n  const f = record.fields || {};\n  const userId = userRecord?.id || \"\";\n  const likes = linkedIds(f[likesField]);\n  const dislikes = linkedIds(f[dislikesField]);\n  return {\n    id: record.id,\n    title: String(f[titleField] || \"\"),\n    description: String(f[descriptionField] || \"\"),\n    proposed_by_id: first(f[proposedByField]) || \"\",\n    proposed_by_name: String(first(f.proposed_by_name) || roleLabel(session.role)),\n    status: String(f[statusField] || \"voting\"),\n    likes,\n    dislikes,\n    my_vote: likes.includes(userId) ? \"like\" : dislikes.includes(userId) ? \"dislike\" : null,\n  };\n}\n\nconst user = await findUserRecord(session);\nif (!user) {\n  return { json: { statusCode: 401, error: \"User not found for this session\", code: \"session_user_missing\" } };\n}\n\nif (action === \"list\") {\n  const ideas = (await listIdeaRecords()).map((record) => ideaFromRecord(record, user));\n  return { json: { ideas } };\n}\n\nif (action === \"create\") {\n  const title = String(body.title || \"\").trim();\n  const description = String(body.description || \"\").trim();\n  if (!title || !description) {\n    return { json: { statusCode: 400, error: \"title and description are required\", code: \"idea_invalid\" } };\n  }\n\n  let created;\n  try {\n    created = await request({\n      method: \"POST\",\n      url: airtable + \"/Ideas\",\n      headers,\n      body: { fields: { [titleField]: title, [descriptionField]: description, [statusField]: \"voting\", [proposedByField]: [user.id], [likesField]: [], [dislikesField]: [] } },\n      json: true,\n    });\n  } catch (error) {\n    return { json: { statusCode: 500, error: \"Airtable idea create failed: \" + (error?.message || String(error)), code: \"airtable_idea_create_failed\" } };\n  }\n  return { json: { idea: ideaFromRecord(created, user) } };\n}\n\nif (action === \"vote\") {\n  const kind = String(body.kind || \"\").trim();\n  if (![\"like\", \"dislike\", \"clear\"].includes(kind)) {\n    return { json: { statusCode: 400, error: \"kind must be like, dislike or clear\", code: \"idea_vote_invalid\" } };\n  }\n\n  const idea = await findIdeaRecord(params.id);\n  if (!idea) {\n    return { json: { statusCode: 404, error: \"Idea not found\", code: \"idea_missing\" } };\n  }\n\n  const f = idea.fields || {};\n  const likes = linkedIds(f[likesField]).filter((id) => id !== user.id);\n  const dislikes = linkedIds(f[dislikesField]).filter((id) => id !== user.id);\n  if (kind === \"like\") likes.push(user.id);\n  if (kind === \"dislike\") dislikes.push(user.id);\n\n  let updated;\n  try {\n    updated = await request({\n      method: \"PATCH\",\n      url: airtable + \"/Ideas/\" + idea.id,\n      headers,\n      body: { fields: { [likesField]: likes, [dislikesField]: dislikes } },\n      json: true,\n    });\n  } catch (error) {\n    return { json: { statusCode: 500, error: \"Airtable idea vote failed: \" + (error?.message || String(error)), code: \"airtable_idea_vote_failed\" } };\n  }\n  return { json: { idea: ideaFromRecord(updated, user) } };\n}\n\nif (action === \"status\") {\n  if (![\"samuel\", \"mathilde\"].includes(session.role)) {\n    return { json: { statusCode: 403, error: \"forbidden\", code: \"idea_status_forbidden\" } };\n  }\n\n  const status = String(body.status || \"\").trim();\n  if (![\"voting\", \"selected\", \"scheduled\", \"done\"].includes(status)) {\n    return { json: { statusCode: 400, error: \"invalid status\", code: \"idea_status_invalid\" } };\n  }\n\n  const idea = await findIdeaRecord(params.id);\n  if (!idea) {\n    return { json: { statusCode: 404, error: \"Idea not found\", code: \"idea_missing\" } };\n  }\n\n  let updated;\n  try {\n    updated = await request({ method: \"PATCH\", url: airtable + \"/Ideas/\" + idea.id, headers, body: { fields: { [statusField]: status } }, json: true });\n  } catch (error) {\n    return { json: { statusCode: 500, error: \"Airtable idea status failed: \" + (error?.message || String(error)), code: \"airtable_idea_status_failed\" } };\n  }\n  return { json: { idea: ideaFromRecord(updated, user) } };\n}\n\nreturn { json: { statusCode: 404, error: \"unknown ideas action\", code: \"ideas_action_missing\" } };"
+        "jsCode": "const CONFIG = {\n  AIRTABLE_PAT: $env.AIRTABLE_PAT || $env.AIRTABLE_API_KEY || \"\",\n  AIRTABLE_BASE_ID: $env.AIRTABLE_BASE_ID || \"\",\n  IDEA_TITLE_FIELD: $env.AIRTABLE_IDEA_TITLE_FIELD || \"title\",\n  IDEA_DESCRIPTION_FIELD: $env.AIRTABLE_IDEA_DESCRIPTION_FIELD || \"description\",\n  IDEA_STATUS_FIELD: $env.AIRTABLE_IDEA_STATUS_FIELD || \"status\",\n  IDEA_PROPOSED_BY_FIELD: $env.AIRTABLE_IDEA_PROPOSED_BY_FIELD || \"proposed_by\",\n  IDEA_LIKES_FIELD: $env.AIRTABLE_IDEA_LIKES_FIELD || \"likes\",\n  IDEA_DISLIKES_FIELD: $env.AIRTABLE_IDEA_DISLIKES_FIELD || \"dislikes\",\n};\n\nconst request = this.helpers.httpRequest.bind(this.helpers);\nconst apiKey = String(CONFIG.AIRTABLE_PAT || \"\").trim();\nconst baseId = String(CONFIG.AIRTABLE_BASE_ID || \"\").trim();\n\nif (!apiKey || !baseId) {\n  return { json: { statusCode: 500, error: \"Airtable config missing in n8n environment\", code: \"airtable_config_missing\" } };\n}\n\nconst airtable = \"https://api.airtable.com/v0/\" + baseId;\nconst headers = { Authorization: \"Bearer \" + apiKey };\nconst action = String($json.action || \"\");\nconst session = $json.session;\nconst body = $json.body || {};\nconst params = $json.params || {};\nconst titleField = CONFIG.IDEA_TITLE_FIELD;\nconst descriptionField = CONFIG.IDEA_DESCRIPTION_FIELD;\nconst statusField = CONFIG.IDEA_STATUS_FIELD;\nconst proposedByField = CONFIG.IDEA_PROPOSED_BY_FIELD;\nconst likesField = CONFIG.IDEA_LIKES_FIELD;\nconst dislikesField = CONFIG.IDEA_DISLIKES_FIELD;\nconst IDEA_FIELDS = [titleField, descriptionField, statusField, proposedByField, likesField, dislikesField];\n\nconst escapeFormulaString = (value) => String(value || \"\").replace(/'/g, \"\\\\'\");\nconst fieldsQuery = (fields) => fields.filter(Boolean).map((field) => \"fields%5B%5D=\" + encodeURIComponent(field)).join(\"&\");\nconst linkedIds = (value) => Array.isArray(value) ? value.map(String) : value ? [String(value)] : [];\nconst first = (value) => Array.isArray(value) ? value[0] : value;\nconst roleLabel = (role) => ({\n  samuel: \"Samuel\",\n  mathilde: \"Mathilde\",\n  amis_samuel: \"Amis de Samuel\",\n  amis_mathilde: \"Amis de Mathilde\",\n}[role] || role || \"\");\n\nasync function findUserRecord(currentSession) {\n  const userId = String(currentSession?.id || \"\").trim();\n  const role = String(currentSession?.role || \"\").trim().toLowerCase();\n  if (userId) {\n    try {\n      return await request({ method: \"GET\", url: airtable + \"/Users/\" + encodeURIComponent(userId), headers, json: true });\n    } catch {}\n  }\n\n  try {\n    const roleFormula = \"LOWER({role}) = '\" + escapeFormulaString(role) + \"'\";\n    const data = await request({ method: \"GET\", url: airtable + \"/Users?maxRecords=1&filterByFormula=\" + encodeURIComponent(roleFormula), headers, json: true });\n    if (data.records?.[0]) return data.records[0];\n  } catch {}\n\n  try {\n    const idFormula = \"{id} = '\" + escapeFormulaString(userId) + \"'\";\n    const data = await request({ method: \"GET\", url: airtable + \"/Users?maxRecords=1&filterByFormula=\" + encodeURIComponent(idFormula), headers, json: true });\n    return data.records?.[0] || null;\n  } catch {}\n\n  return null;\n}\n\nasync function findIdeaRecord(id) {\n  const cleanId = String(id || \"\").trim();\n  if (!cleanId) return null;\n  try {\n    return await request({ method: \"GET\", url: airtable + \"/Ideas/\" + encodeURIComponent(cleanId), headers, json: true });\n  } catch {}\n\n  try {\n    const recordIdFormula = \"RECORD_ID() = '\" + escapeFormulaString(cleanId) + \"'\";\n    const data = await request({ method: \"GET\", url: airtable + \"/Ideas?maxRecords=1&filterByFormula=\" + encodeURIComponent(recordIdFormula) + \"&\" + fieldsQuery(IDEA_FIELDS), headers, json: true });\n    if (data.records?.[0]) return data.records[0];\n  } catch {}\n\n  try {\n    const customIdFormula = \"{id} = '\" + escapeFormulaString(cleanId) + \"'\";\n    const data = await request({ method: \"GET\", url: airtable + \"/Ideas?maxRecords=1&filterByFormula=\" + encodeURIComponent(customIdFormula) + \"&\" + fieldsQuery(IDEA_FIELDS), headers, json: true });\n    return data.records?.[0] || null;\n  } catch {}\n\n  return null;\n}\n\nasync function listIdeaRecords() {\n  const records = [];\n  let offset = \"\";\n  do {\n    const url = airtable + \"/Ideas?\" + fieldsQuery(IDEA_FIELDS) + \"&pageSize=100\" + (offset ? \"&offset=\" + encodeURIComponent(offset) : \"\");\n    const data = await request({ method: \"GET\", url, headers, json: true });\n    records.push(...(data.records || []));\n    offset = data.offset || \"\";\n  } while (offset);\n  return records;\n}\n\nfunction ideaFromRecord(record, userRecord) {\n  const f = record.fields || {};\n  const userId = userRecord?.id || \"\";\n  const userName = String(userRecord?.fields?.name || session.name || roleLabel(session.role));\n  const likes = linkedIds(f[likesField]);\n  const dislikes = linkedIds(f[dislikesField]);\n  return {\n    id: record.id,\n    title: String(f[titleField] || \"\"),\n    description: String(f[descriptionField] || \"\"),\n    proposed_by_id: first(f[proposedByField]) || \"\",\n    proposed_by_name: String(first(f.proposed_by_name) || userName),\n    status: String(f[statusField] || \"voting\"),\n    likes,\n    dislikes,\n    my_vote: likes.includes(userId) ? \"like\" : dislikes.includes(userId) ? \"dislike\" : null,\n  };\n}\n\nconst user = (await findUserRecord(session)) || {\n  id: String(session.id || session.role || \"\"),\n  fields: { name: session.name, role: session.role },\n  fallback: true,\n};\n\nif (action === \"list\") {\n  const ideas = (await listIdeaRecords()).map((record) => ideaFromRecord(record, user));\n  return { json: { ideas } };\n}\n\nif (action === \"create\") {\n  const title = String(body.title || \"\").trim();\n  const description = String(body.description || \"\").trim();\n  if (!title) {\n    return { json: { statusCode: 400, error: \"title is required\", code: \"idea_invalid\" } };\n  }\n\n  let created;\n  const baseFields = { [titleField]: title, [descriptionField]: description, [statusField]: \"voting\", [likesField]: [], [dislikesField]: [] };\n  const createFields = user.fallback ? baseFields : { ...baseFields, [proposedByField]: [user.id] };\n  try {\n    created = await request({\n      method: \"POST\",\n      url: airtable + \"/Ideas\",\n      headers,\n      body: { fields: createFields },\n      json: true,\n    });\n  } catch (error) {\n    const message = String(error?.message || error || \"\");\n    if (!user.fallback && message.includes(proposedByField)) {\n      try {\n        created = await request({ method: \"POST\", url: airtable + \"/Ideas\", headers, body: { fields: baseFields }, json: true });\n      } catch (retryError) {\n        return { json: { statusCode: 500, error: \"Airtable idea create failed: \" + (retryError?.message || String(retryError)), code: \"airtable_idea_create_failed\" } };\n      }\n    } else {\n      return { json: { statusCode: 500, error: \"Airtable idea create failed: \" + (error?.message || String(error)), code: \"airtable_idea_create_failed\" } };\n    }\n  }\n  return { json: { idea: ideaFromRecord(created, user) } };\n}\n\nif (action === \"vote\") {\n  const kind = String(body.kind || \"\").trim();\n  if (![\"like\", \"dislike\", \"clear\"].includes(kind)) {\n    return { json: { statusCode: 400, error: \"kind must be like, dislike or clear\", code: \"idea_vote_invalid\" } };\n  }\n\n  const idea = await findIdeaRecord(params.id);\n  if (!idea) {\n    return { json: { statusCode: 404, error: \"Idea not found\", code: \"idea_missing\" } };\n  }\n\n  const f = idea.fields || {};\n  const likes = linkedIds(f[likesField]).filter((id) => id !== user.id);\n  const dislikes = linkedIds(f[dislikesField]).filter((id) => id !== user.id);\n  if (kind === \"like\") likes.push(user.id);\n  if (kind === \"dislike\") dislikes.push(user.id);\n\n  let updated;\n  try {\n    updated = await request({\n      method: \"PATCH\",\n      url: airtable + \"/Ideas/\" + idea.id,\n      headers,\n      body: { fields: { [likesField]: likes, [dislikesField]: dislikes } },\n      json: true,\n    });\n  } catch (error) {\n    return { json: { statusCode: 500, error: \"Airtable idea vote failed: \" + (error?.message || String(error)), code: \"airtable_idea_vote_failed\" } };\n  }\n  return { json: { idea: ideaFromRecord(updated, user) } };\n}\n\nif (action === \"status\") {\n  if (![\"samuel\", \"mathilde\"].includes(session.role)) {\n    return { json: { statusCode: 403, error: \"forbidden\", code: \"idea_status_forbidden\" } };\n  }\n\n  const status = String(body.status || \"\").trim();\n  if (![\"voting\", \"selected\", \"scheduled\", \"done\"].includes(status)) {\n    return { json: { statusCode: 400, error: \"invalid status\", code: \"idea_status_invalid\" } };\n  }\n\n  const idea = await findIdeaRecord(params.id);\n  if (!idea) {\n    return { json: { statusCode: 404, error: \"Idea not found\", code: \"idea_missing\" } };\n  }\n\n  let updated;\n  try {\n    updated = await request({ method: \"PATCH\", url: airtable + \"/Ideas/\" + idea.id, headers, body: { fields: { [statusField]: status } }, json: true });\n  } catch (error) {\n    return { json: { statusCode: 500, error: \"Airtable idea status failed: \" + (error?.message || String(error)), code: \"airtable_idea_status_failed\" } };\n  }\n  return { json: { idea: ideaFromRecord(updated, user) } };\n}\n\nreturn { json: { statusCode: 404, error: \"unknown ideas action\", code: \"ideas_action_missing\" } };"
       },
       "id": "ed3e6ca9-a910-42c5-a24c-000000000116",
       "name": "Ideas API Logic",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [1400, 300]
+      "position": [
+        1400,
+        300
+      ]
     },
     {
       "parameters": {
@@ -228,7 +270,10 @@
       "name": "Respond",
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1.2,
-      "position": [1640, 300]
+      "position": [
+        1640,
+        300
+      ]
     }
   ],
   "connections": {
