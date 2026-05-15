@@ -72,7 +72,6 @@ function EpisodeDetail() {
   const myReview = myRole ? reviews.find((r) => r.author_role === myRole) : undefined;
   const couplePartner: Role | null =
     myRole === "samuel" ? "mathilde" : myRole === "mathilde" ? "samuel" : null;
-
   return (
     <div>
       <div className="relative h-[50vh] min-h-[340px] -mt-14">
