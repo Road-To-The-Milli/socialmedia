@@ -31,6 +31,10 @@ export const Route = createFileRoute("/_app/episode/$episodeId")({
 
 const COUPLE: Role[] = ["samuel", "mathilde"];
 
+function canUploadEpisodeMedia(role: Role | undefined): boolean {
+  return role === "samuel" || role === "mathilde";
+}
+
 const ROLE_LABEL: Record<Role, { label: string; emoji: string }> = {
   samuel: { label: "Samuel", emoji: "🎬" },
   mathilde: { label: "Mathilde", emoji: "🌹" },
@@ -66,7 +70,7 @@ function EpisodeDetail() {
     : null;
 
   const myRole = user?.role;
-  const canManageMedia = myRole === "samuel" || myRole === "mathilde";
+  const canManageMedia = canUploadEpisodeMedia(myRole);
 
   const reviewByRole = (role: Role) => reviews.find((r) => r.author_role === role);
   const myReview = myRole ? reviews.find((r) => r.author_role === myRole) : undefined;

@@ -149,9 +149,7 @@ export function useEpisodeReviews(episodeId: string | undefined) {
     queryKey: episodeId ? queryKeys.episodeReviews(episodeId) : ["episodes", "_", "reviews"],
     queryFn: () => api.get<ReviewsResponse>(`${REVIEW_LIST_PATH_PREFIX}/${episodeId}/reviews`),
     enabled: Boolean(episodeId),
-    staleTime: 0,
-    refetchInterval: 5 * 1000,
-    refetchOnMount: "always",
+    staleTime: LIVE_STALE_TIME,
     refetchOnWindowFocus: true,
   });
 }
