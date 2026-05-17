@@ -9,6 +9,9 @@ import { useEffect } from "react";
 import { api, readSession } from "./api";
 import type {
   Episode,
+  EpisodeComment,
+  EpisodeCommentDraft,
+  EpisodeCommentsResponse,
   EpisodeDraft,
   EpisodeMediaUpload,
   Idea,
@@ -36,6 +39,8 @@ const BUZZ_IDEA_PREFIX = "buzz-date-";
 const MEDIA_UPSERT_PATH_PREFIX = "/e6d7fbaf-bbb1-4b28-8ae1-cdc0f5c5f6c1/episodes";
 const REVIEW_LIST_PATH_PREFIX = "/6483ce95-fa1a-4ffd-9982-3348d437d928/episodes";
 const REVIEW_UPSERT_PATH_PREFIX = "/e8f323ae-2f03-42d4-862e-fe88351c3dac/episodes";
+const COMMENT_LIST_PATH_PREFIX = "/d61c10bd-78ec-4b59-8b6b-7e443191b4c2/episodes";
+const COMMENT_CREATE_PATH_PREFIX = "/4af6bb46-948f-43b2-862d-8a0ac440d688/episodes";
 
 const BUZZ_DATE_IDEAS: Idea[] = [
   {
@@ -94,6 +99,7 @@ function writeLocalVotes(map: Record<string, string>): void {
 export const queryKeys = {
   episodes: ["episodes"] as const,
   episodeReviews: (id: string) => ["episodes", id, "reviews"] as const,
+  episodeComments: (id: string) => ["episodes", id, "comments"] as const,
   ideas: ["ideas"] as const,
   votes: ["votes"] as const,
   synthese: ["synthese"] as const,
@@ -182,6 +188,44 @@ export function useSaveReview(episodeId: string) {
       });
       void qc.invalidateQueries({ queryKey: queryKeys.episodeReviews(episodeId) });
       void qc.invalidateQueries({ queryKey: queryKeys.episodes });
+    },
+  });
+}
+
+export function useEpisodeComments(episodeId: string | undefined) {
+  return useQuery({
+    queryKey: episodeId ? queryKeys.episodeComments(episodeId) : ["episodes", "_", "comments"],
+    queryFn: async () => {
+      try {
+        return await api.get<EpisodeCommentsResponse>(
+          `${COMMENT_LIST_PATH_PREFIX}/${episodeId}/comments`,
+        );
+      } catch {
+        return { comments: [] };
+      }
+    },
+    enabled: Boolean(episodeId),
+    staleTime: 0,
+    refetchInterval: 5 * 1000,
+    refetchOnMount: "always",
+    refetchOnWindowFocus: true,
+  });
+}
+
+export function useCreateEpisodeComment(episodeId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (draft: EpisodeCommentDraft) =>
+      api.post<{ comment: EpisodeComment }>(
+        `${COMMENT_CREATE_PATH_PREFIX}/${episodeId}/comments`,
+        draft,
+      ),
+    onSuccess: (res) => {
+      qc.setQueryData<EpisodeCommentsResponse>(queryKeys.episodeComments(episodeId), (current) => {
+        const comments = current?.comments ?? [];
+        return { comments: [res.comment, ...comments] };
+      });
+      void qc.invalidateQueries({ queryKey: queryKeys.episodeComments(episodeId) });
     },
   });
 }

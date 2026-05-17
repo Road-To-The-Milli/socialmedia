@@ -86,6 +86,24 @@ export interface ReviewsResponse {
   season_unlocked: boolean;
 }
 
+export interface EpisodeComment {
+  id: string;
+  episode_id: string;
+  author_name: string;
+  author_role?: Role;
+  body: string;
+  created_at: string;
+}
+
+export interface EpisodeCommentDraft {
+  author_name: string;
+  body: string;
+}
+
+export interface EpisodeCommentsResponse {
+  comments: EpisodeComment[];
+}
+
 export type IdeaStatus = "voting" | "selected" | "scheduled" | "done";
 
 export interface Idea {
