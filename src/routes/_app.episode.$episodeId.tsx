@@ -8,15 +8,26 @@ import {
   Loader2,
   Lock,
   MapPin,
+  MessageCircle,
   Music,
+  Send,
   Star,
   Upload,
+  UserRound,
 } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "@/lib/auth";
-import { useEpisodeReviews, useEpisodes, useSaveReview, useUploadEpisodeMedia } from "@/lib/store";
+import {
+  useCreateEpisodeComment,
+  useEpisodeComments,
+  useEpisodeReviews,
+  useEpisodes,
+  useSaveReview,
+  useUploadEpisodeMedia,
+} from "@/lib/store";
 import type {
   Episode,
+  EpisodeComment,
   EpisodeMedia,
   EpisodeMediaUpload,
   Review,
@@ -47,7 +58,9 @@ function EpisodeDetail() {
   const { user } = useAuth();
   const episodesQuery = useEpisodes();
   const reviewsQuery = useEpisodeReviews(episodeId);
+  const commentsQuery = useEpisodeComments(episodeId);
   const saveReview = useSaveReview(episodeId);
+  const createComment = useCreateEpisodeComment(episodeId);
   const uploadMedia = useUploadEpisodeMedia(episodeId);
 
   if (episodesQuery.isLoading || reviewsQuery.isLoading) {
@@ -118,19 +131,6 @@ function EpisodeDetail() {
         </div>
       </div>
 
-      <MediaSection
-        episode={ep}
-        canUpload={canManageMedia}
-        saving={uploadMedia.isPending}
-        onUpload={(files) =>
-          uploadMedia.mutate(files, {
-            onSuccess: () => toast.success("Média ajouté à l'épisode"),
-            onError: (err) =>
-              toast.error(err instanceof Error ? err.message : "Impossible d'ajouter le média."),
-          })
-        }
-      />
-
       <div className="max-w-4xl mx-auto px-4 sm:px-6 py-10 grid md:grid-cols-2 gap-6">
         {COUPLE.map((role) => {
           const review = reviewByRole(role);
@@ -170,8 +170,167 @@ function EpisodeDetail() {
           à la fin de la saison.
         </p>
       )}
+
+      <MediaSection
+        episode={ep}
+        canUpload={canManageMedia}
+        saving={uploadMedia.isPending}
+        onUpload={(files) =>
+          uploadMedia.mutate(files, {
+            onSuccess: () => toast.success("Média ajouté à l'épisode"),
+            onError: (err) =>
+              toast.error(err instanceof Error ? err.message : "Impossible d'ajouter le média."),
+          })
+        }
+      />
+
+      <CommentsSection
+        comments={commentsQuery.data?.comments ?? []}
+        loading={commentsQuery.isLoading}
+        saving={createComment.isPending}
+        onSubmit={async (draft) => {
+          const res = await createComment.mutateAsync(draft);
+          toast.success("Commentaire ajoute");
+          return res.comment;
+        }}
+      />
     </div>
   );
+}
+
+function CommentsSection({
+  comments,
+  loading,
+  saving,
+  onSubmit,
+}: {
+  comments: EpisodeComment[];
+  loading: boolean;
+  saving: boolean;
+  onSubmit: (draft: { author_name: string; body: string }) => Promise<EpisodeComment>;
+}) {
+  const [name, setName] = useState("");
+  const [body, setBody] = useState("");
+
+  const canSubmit = name.trim().length >= 2 && body.trim().length >= 2 && !saving;
+
+  return (
+    <section className="max-w-4xl mx-auto px-4 sm:px-6 pb-12">
+      <div className="grid gap-6 md:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)]">
+        <form
+          className="rounded-xl border border-border bg-card p-5 shadow-poster"
+          onSubmit={async (event) => {
+            event.preventDefault();
+            if (!canSubmit) return;
+            try {
+              await onSubmit({ author_name: name.trim(), body: body.trim() });
+              setBody("");
+            } catch (err) {
+              toast.error(err instanceof Error ? err.message : "Impossible d'ajouter le commentaire.");
+            }
+          }}
+        >
+          <p className="mb-1 inline-flex items-center gap-2 text-xs font-bold uppercase tracking-[0.24em] text-primary">
+            <MessageCircle className="size-4" />
+            Laisser un commentaire
+          </p>
+          <h2 className="text-xl font-black tracking-tight">Vos reactions</h2>
+
+          <label className="mt-4 block text-xs uppercase tracking-wider text-muted-foreground">
+            Prenom
+          </label>
+          <div className="mt-1 flex items-center gap-2 rounded-lg border border-border bg-input/50 px-3 py-2 focus-within:ring-2 focus-within:ring-primary">
+            <UserRound className="size-4 shrink-0 text-muted-foreground" />
+            <input
+              value={name}
+              onChange={(event) => setName(event.target.value)}
+              placeholder="Prenom"
+              maxLength={40}
+              className="min-w-0 flex-1 bg-transparent text-sm outline-none"
+            />
+          </div>
+
+          <label className="mt-3 block text-xs uppercase tracking-wider text-muted-foreground">
+            Commentaire
+          </label>
+          <textarea
+            value={body}
+            onChange={(event) => setBody(event.target.value)}
+            placeholder="Reagis a cet episode..."
+            rows={5}
+            maxLength={800}
+            className="mt-1 w-full resize-none rounded-lg border border-border bg-input/50 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-primary"
+          />
+          <div className="mt-4 flex items-center justify-between gap-3">
+            <span className="text-xs text-muted-foreground">{body.length}/800</span>
+            <button
+              type="submit"
+              disabled={!canSubmit}
+              className="inline-flex items-center justify-center gap-2 rounded-md bg-primary px-4 py-2 text-sm font-bold text-primary-foreground hover:bg-primary/90 disabled:opacity-40"
+            >
+              {saving ? <Loader2 className="size-4 animate-spin" /> : <Send className="size-4" />}
+              Publier
+            </button>
+          </div>
+        </form>
+
+        <div className="rounded-xl border border-border bg-card p-5">
+          <div className="mb-4 flex items-center justify-between gap-3">
+            <h2 className="text-xl font-black tracking-tight">Tous les commentaires</h2>
+            <span className="rounded-full border border-border px-2.5 py-1 text-xs text-muted-foreground">
+              {comments.length}
+            </span>
+          </div>
+
+          {loading ? (
+            <div className="flex min-h-40 items-center justify-center text-muted-foreground">
+              <Loader2 className="size-5 animate-spin" />
+            </div>
+          ) : comments.length ? (
+            <div className="space-y-3">
+              {comments.map((comment) => (
+                <article
+                  key={comment.id}
+                  className="rounded-lg border border-border bg-background/40 p-4"
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <h3 className="font-bold leading-tight">{comment.author_name}</h3>
+                      <p className="text-xs text-muted-foreground">
+                        {formatCommentDate(comment.created_at)}
+                      </p>
+                    </div>
+                    {comment.author_role && (
+                      <span className="shrink-0 rounded-full bg-primary/10 px-2 py-1 text-xs text-primary">
+                        {ROLE_LABEL[comment.author_role]?.label ?? comment.author_role}
+                      </span>
+                    )}
+                  </div>
+                  <p className="mt-3 whitespace-pre-wrap text-sm leading-6">{comment.body}</p>
+                </article>
+              ))}
+            </div>
+          ) : (
+            <div className="flex min-h-40 items-center justify-center rounded-lg border border-dashed border-border px-4 text-center text-sm text-muted-foreground">
+              Aucun commentaire pour le moment.
+            </div>
+          )}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function formatCommentDate(value: string): string {
+  if (!value) return "";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "";
+  return date.toLocaleDateString("fr-FR", {
+    day: "2-digit",
+    month: "short",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
 }
 
 function MediaSection({

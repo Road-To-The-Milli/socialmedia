@@ -1,0 +1,63 @@
+{
+  "name": "GET /episodes/:id/comments",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "GET",
+        "path": "episodes/:id/comments",
+        "responseMode": "responseNode",
+        "options": {
+          "allowedOrigins": "*"
+        }
+      },
+      "id": "7a41b832-a978-4b47-84f6-426fb7dd0970",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [240, 300],
+      "webhookId": "d61c10bd-78ec-4b59-8b6b-7e443191b4c2"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const CONFIG = {\n  AIRTABLE_PAT: $env.AIRTABLE_PAT || $env.AIRTABLE_API_KEY || \"\",\n  AIRTABLE_BASE_ID: $env.AIRTABLE_BASE_ID || \"\",\n  SHARED_API_KEY: $env.SHARED_API_KEY || \"a58d49ae13d73706115681d14de53bd6857a88652b6cca8669a290898fcaac64\",\n  COMMENT_TABLE: $env.AIRTABLE_COMMENT_TABLE || \"Comments\",\n  COMMENT_EPISODE_FIELD: $env.AIRTABLE_COMMENT_EPISODE_FIELD || \"episode\",\n};\n\nconst headersIn = $json.headers || {};\nif (String(headersIn[\"x-api-key\"] || \"\") !== CONFIG.SHARED_API_KEY) {\n  return { json: { statusCode: 401, body: { error: \"unauthorized\", code: \"no_key\" } } };\n}\nif (!CONFIG.AIRTABLE_PAT || !CONFIG.AIRTABLE_BASE_ID) {\n  return { json: { statusCode: 500, body: { error: \"Airtable config missing\", code: \"airtable_config_missing\" } } };\n}\n\nconst request = this.helpers.httpRequest.bind(this.helpers);\nconst airtable = \"https://api.airtable.com/v0/\" + CONFIG.AIRTABLE_BASE_ID;\nconst headers = { Authorization: \"Bearer \" + CONFIG.AIRTABLE_PAT };\nconst episodeId = String($json.params?.id || \"\").trim();\nconst escapeFormulaString = (value) => String(value || \"\").replace(/'/g, \"\\\\'\");\nconst linkedIds = (value) => Array.isArray(value) ? value.map(String) : value ? [String(value)] : [];\n\nasync function findEpisodeRecord(id) {\n  if (!id) return null;\n  try {\n    return await request({ method: \"GET\", url: airtable + \"/Episodes/\" + encodeURIComponent(id), headers, json: true });\n  } catch {}\n  const formula = \"OR(RECORD_ID() = '\" + escapeFormulaString(id) + \"', {id} = '\" + escapeFormulaString(id) + \"')\";\n  const data = await request({ method: \"GET\", url: airtable + \"/Episodes?maxRecords=1&filterByFormula=\" + encodeURIComponent(formula), headers, json: true });\n  return data.records?.[0] || null;\n}\n\nconst episode = await findEpisodeRecord(episodeId);\nif (!episode) {\n  return { json: { statusCode: 404, body: { error: \"Episode not found\", code: \"episode_missing\" } } };\n}\n\nconst records = [];\nlet offset = \"\";\ndo {\n  const fields = [CONFIG.COMMENT_EPISODE_FIELD, \"author_name\", \"author_role\", \"body\"];\n  const fieldQuery = fields.map((field) => \"fields%5B%5D=\" + encodeURIComponent(field)).join(\"&\");\n  const url = airtable + \"/\" + encodeURIComponent(CONFIG.COMMENT_TABLE) + \"?\" + fieldQuery + \"&pageSize=100\" + (offset ? \"&offset=\" + encodeURIComponent(offset) : \"\");\n  const data = await request({ method: \"GET\", url, headers, json: true });\n  records.push(...(data.records || []));\n  offset = data.offset || \"\";\n} while (offset);\n\nconst comments = records\n  .filter((record) => linkedIds(record.fields?.[CONFIG.COMMENT_EPISODE_FIELD]).includes(episode.id))\n  .map((record) => ({\n    id: record.id,\n    episode_id: episode.id,\n    author_name: String(record.fields?.author_name || \"Anonyme\"),\n    author_role: String(record.fields?.author_role || \"\"),\n    body: String(record.fields?.body || \"\"),\n    created_at: String(record.createdTime || \"\"),\n  }))\n  .filter((comment) => comment.body)\n  .sort((a, b) => b.created_at.localeCompare(a.created_at));\n\nreturn { json: { statusCode: 200, body: { comments } } };"
+      },
+      "id": "88fcb1e1-0fa1-406a-a633-e0d879b45394",
+      "name": "List Comments",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [480, 300]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify($json.body) }}",
+        "options": {
+          "responseCode": "={{ $json.statusCode || 200 }}"
+        }
+      },
+      "id": "68193173-301a-496b-a55a-0ee5e05540be",
+      "name": "Respond",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.2,
+      "position": [720, 300]
+    }
+  ],
+  "connections": {
+    "Webhook": {
+      "main": [[{ "node": "List Comments", "type": "main", "index": 0 }]]
+    },
+    "List Comments": {
+      "main": [[{ "node": "Respond", "type": "main", "index": 0 }]]
+    }
+  },
+  "pinData": {},
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "active": false,
+  "meta": {
+    "templateCredsSetupCompleted": false,
+    "handoffSection": "custom GET /episodes/:id/comments"
+  }
+}

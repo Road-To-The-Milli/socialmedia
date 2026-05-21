@@ -14,7 +14,10 @@
       "name": "Webhook",
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 2,
-      "position": [240, 300],
+      "position": [
+        240,
+        300
+      ],
       "webhookId": "e6d7fbaf-bbb1-4b28-8ae1-cdc0f5c5f6c1",
       "notes": "x-api-key and x-session-token required"
     },
@@ -44,7 +47,10 @@
       "name": "API Key Guard",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.2,
-      "position": [460, 300]
+      "position": [
+        460,
+        300
+      ]
     },
     {
       "parameters": {
@@ -58,7 +64,10 @@
       "name": "401 Unauthorized",
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1.2,
-      "position": [680, 460]
+      "position": [
+        680,
+        460
+      ]
     },
     {
       "parameters": {
@@ -69,7 +78,10 @@
       "name": "Session Lookup",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [680, 200]
+      "position": [
+        680,
+        200
+      ]
     },
     {
       "parameters": {
@@ -98,7 +110,10 @@
       "name": "Session Guard",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.2,
-      "position": [840, 200]
+      "position": [
+        840,
+        200
+      ]
     },
     {
       "parameters": {
@@ -112,18 +127,24 @@
       "name": "Session Error",
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1.2,
-      "position": [1040, 360]
+      "position": [
+        1040,
+        360
+      ]
     },
     {
       "parameters": {
         "mode": "runOnceForEachItem",
-        "jsCode": "const CONFIG = {\n  AIRTABLE_PAT: $env.AIRTABLE_PAT || $env.AIRTABLE_API_KEY || \"\",\n  AIRTABLE_BASE_ID: $env.AIRTABLE_BASE_ID || \"\",\n  AIRTABLE_EPISODE_MEDIA_FIELD: $env.AIRTABLE_EPISODE_MEDIA_FIELD || \"media\",\n};\n\nconst request = this.helpers.httpRequest.bind(this.helpers);\nconst apiKey = String(CONFIG.AIRTABLE_PAT || \"\").trim();\nconst baseId = String(CONFIG.AIRTABLE_BASE_ID || \"\").trim();\nconst mediaField = String(CONFIG.AIRTABLE_EPISODE_MEDIA_FIELD || \"media\").trim();\nconst session = $json.session;\nconst episodeId = String($json.params?.id || \"\").trim();\nconst files = Array.isArray($json.body?.files) ? $json.body.files : [];\n\nif (!apiKey || !baseId) {\n  return { json: { statusCode: 500, error: \"Airtable config missing in n8n environment\", code: \"airtable_config_missing\" } };\n}\n\nif (!session || ![\"samuel\", \"mathilde\"].includes(session.role)) {\n  return { json: { statusCode: 403, error: \"forbidden\", code: \"episode_media_forbidden\" } };\n}\n\nif (!episodeId || !files.length) {\n  return { json: { statusCode: 400, error: \"episode id and files are required\", code: \"episode_media_invalid\" } };\n}\n\nif (files.length \u003e 8) {\n  return { json: { statusCode: 413, error: \"Trop de fichiers. Ajoute 8 medias maximum a la fois.\", code: \"too_many_files\" } };\n}\n\nconst airtable = \"https://api.airtable.com/v0/\" + baseId;\nconst uploadBase = \"https://content.airtable.com/v0/\" + baseId;\nconst headers = { Authorization: \"Bearer \" + apiKey };\n\nconst fieldQuery =\n  \"?fields%5B%5D=number\u0026fields%5B%5D=title\u0026fields%5B%5D=date\u0026fields%5B%5D=place\u0026fields%5B%5D=duration\u0026fields%5B%5D=cover_url\u0026fields%5B%5D=notes\u0026fields%5B%5D=music_url\u0026fields%5B%5D=\" +\n  encodeURIComponent(mediaField);\nconst escapeFormulaString = (value) =\u003e String(value).replace(/\u0027/g, \"\\\\\u0027\");\n\nasync function findEpisodeRecord(id) {\n  const cleanId = String(id || \"\").trim();\n  if (!cleanId) return null;\n\n  try {\n    const directRecord = await request({\n      method: \"GET\",\n      url: airtable + \"/Episodes/\" + encodeURIComponent(cleanId) + fieldQuery,\n      headers,\n      json: true,\n    });\n    return directRecord;\n  } catch {}\n\n  const recordIdFormula = \"RECORD_ID() = \u0027\" + escapeFormulaString(cleanId) + \"\u0027\";\n  try {\n    const data = await request({\n      method: \"GET\",\n      url: airtable + \"/Episodes?maxRecords=1\u0026filterByFormula=\" + encodeURIComponent(recordIdFormula) + \"\u0026\" + fieldQuery.slice(1),\n      headers,\n      json: true,\n    });\n    if (data.records?.[0]) return data.records[0];\n  } catch {}\n\n  try {\n    const customIdFormula = \"{id} = \u0027\" + escapeFormulaString(cleanId) + \"\u0027\";\n    const data = await request({\n      method: \"GET\",\n      url: airtable + \"/Episodes?maxRecords=1\u0026filterByFormula=\" + encodeURIComponent(customIdFormula) + \"\u0026\" + fieldQuery.slice(1),\n      headers,\n      json: true,\n    });\n    return data.records?.[0] || null;\n  } catch {}\n\n  return null;\n}\n\nlet record;\ntry {\n  record = await findEpisodeRecord(episodeId);\n} catch (error) {\n  return { json: { statusCode: 404, error: \"Episode not found: \" + (error?.message || String(error)), code: \"episode_missing\" } };\n}\n\nconst recordId = record?.id || \"\";\nif (!recordId) {\n  return { json: { statusCode: 404, error: \"Episode not found\", code: \"episode_missing\" } };\n}\n\nlet finalFields = record.fields || {};\n\nfor (const input of files) {\n  const file = String(input?.file || \"\").replace(/^data:.*?;base64,/, \"\");\n  const filename = String(input?.filename || \"media-\" + Date.now()).trim();\n  const contentType = String(input?.contentType || \"application/octet-stream\").trim();\n  const isMedia = contentType.startsWith(\"image/\") || contentType.startsWith(\"video/\");\n  const fileBytes = Math.floor((file.length * 3) / 4);\n\n  if (!file || !isMedia) {\n    return { json: { statusCode: 400, error: \"Only image and video files are accepted\", code: \"media_type_invalid\" } };\n  }\n\n  if (fileBytes \u003e 5 * 1024 * 1024) {\n    return { json: { statusCode: 413, error: \"Chaque media doit faire moins de 5 Mo.\", code: \"media_too_large\" } };\n  }\n\n  try {\n    const uploaded = await request({\n      method: \"POST\",\n      url: uploadBase + \"/\" + encodeURIComponent(recordId) + \"/\" + encodeURIComponent(mediaField) + \"/uploadAttachment\",\n      headers: { ...headers, Accept: \"application/json\" },\n      body: { file, filename, contentType },\n      json: true,\n    });\n    finalFields = uploaded.fields || finalFields;\n  } catch (error) {\n    return { json: { statusCode: 500, error: \"Airtable media upload failed: \" + (error?.message || String(error)), code: \"airtable_media_upload_failed\" } };\n  }\n}\n\nconst mediaFromAttachments = (attachments) =\u003e\n  (Array.isArray(attachments) ? attachments : []).map((attachment) =\u003e {\n    const contentType = String(attachment.type || \"\");\n    return {\n      id: attachment.id || \"\",\n      url: attachment.url || \"\",\n      filename: attachment.filename || \"media\",\n      type: contentType.startsWith(\"video/\") ? \"video\" : contentType.startsWith(\"image/\") ? \"image\" : \"file\",\n      contentType,\n      size: attachment.size || 0,\n    };\n  });\n\nconst media = mediaFromAttachments(finalFields[mediaField]);\n\nreturn {\n  json: {\n    episode: {\n      id: recordId,\n      number: Number(finalFields.number || 0),\n      title: String(finalFields.title || \"\"),\n      date: String(finalFields.date || \"\"),\n      place: String(finalFields.place || \"\"),\n      duration: String(finalFields.duration || \"\"),\n      cover_url: String(finalFields.cover_url || media.find((item) =\u003e item.type === \"image\")?.url || \"\"),\n      media,\n      notes: String(finalFields.notes || \"\"),\n      music_url: String(finalFields.music_url || \"\"),\n    },\n  },\n};"
+        "jsCode": "const CONFIG = {\n  AIRTABLE_PAT: \"REPLACE_WITH_AIRTABLE_PAT\",\n  AIRTABLE_BASE_ID: \"appyUZ6ny7FTzPKSk\",\n  AIRTABLE_EPISODE_MEDIA_FIELD: \"media\",\n};\n\nconst request = this.helpers.httpRequest.bind(this.helpers);\nconst apiKey = String(CONFIG.AIRTABLE_PAT || \"\").trim();\nconst baseId = String(CONFIG.AIRTABLE_BASE_ID || \"\").trim();\nconst mediaField = String(CONFIG.AIRTABLE_EPISODE_MEDIA_FIELD || \"media\").trim();\nconst session = $json.session;\nconst episodeId = String($json.params?.id || \"\").trim();\nconst files = Array.isArray($json.body?.files) ? $json.body.files : [];\n\nif (!apiKey || !baseId) {\n  return { json: { statusCode: 500, error: \"Airtable config missing\", code: \"airtable_config_missing\" } };\n}\n\nif (!session || ![\"samuel\", \"mathilde\"].includes(session.role)) {\n  return { json: { statusCode: 403, error: \"forbidden\", code: \"episode_media_forbidden\" } };\n}\n\nif (!episodeId || !files.length) {\n  return { json: { statusCode: 400, error: \"episode id and files are required\", code: \"episode_media_invalid\" } };\n}\n\nif (files.length > 8) {\n  return { json: { statusCode: 413, error: \"Trop de fichiers. Ajoute 8 medias maximum a la fois.\", code: \"too_many_files\" } };\n}\n\nconst airtable = \"https://api.airtable.com/v0/\" + baseId;\nconst uploadBase = \"https://content.airtable.com/v0/\" + baseId;\nconst headers = { Authorization: \"Bearer \" + apiKey };\nconst escapeFormulaString = (value) => String(value || \"\").replace(/'/g, \"\\'\");\nconst first = (value) => Array.isArray(value) ? value[0] : value;\n\nasync function airtableFindByFormula(formula) {\n  const data = await request({\n    method: \"GET\",\n    url: airtable + \"/Episodes?maxRecords=1&filterByFormula=\" + encodeURIComponent(formula),\n    headers,\n    json: true,\n  });\n  return data.records?.[0] || null;\n}\n\nasync function listEpisodesForFallback() {\n  const records = [];\n  let offset = \"\";\n  do {\n    const data = await request({\n      method: \"GET\",\n      url: airtable + \"/Episodes?pageSize=100\" + (offset ? \"&offset=\" + encodeURIComponent(offset) : \"\"),\n      headers,\n      json: true,\n    });\n    records.push(...(data.records || []));\n    offset = data.offset || \"\";\n  } while (offset);\n  return records;\n}\n\nasync function findEpisodeRecord(id) {\n  const cleanId = String(id || \"\").trim();\n  if (!cleanId) return null;\n\n  if (cleanId.startsWith(\"rec\")) {\n    try {\n      return await request({\n        method: \"GET\",\n        url: airtable + \"/Episodes/\" + encodeURIComponent(cleanId),\n        headers,\n        json: true,\n      });\n    } catch {}\n  }\n\n  try {\n    const record = await airtableFindByFormula(\"RECORD_ID() = '\" + escapeFormulaString(cleanId) + \"'\");\n    if (record) return record;\n  } catch {}\n\n  try {\n    const record = await airtableFindByFormula(\"{id} = '\" + escapeFormulaString(cleanId) + \"'\");\n    if (record) return record;\n  } catch {}\n\n  const numberMatch = cleanId.match(/(\\d+)$/);\n  if (numberMatch) {\n    const episodeNumber = Number(numberMatch[1]);\n    try {\n      const record = await airtableFindByFormula(\"{number} = \" + episodeNumber);\n      if (record) return record;\n    } catch {}\n\n    try {\n      const records = await listEpisodesForFallback();\n      const record = records.find((candidate) => Number(candidate.fields?.number || 0) === episodeNumber);\n      if (record) return record;\n    } catch {}\n  }\n\n  try {\n    const records = await listEpisodesForFallback();\n    return records.find((candidate) => {\n      const f = candidate.fields || {};\n      const possibleIds = [candidate.id, first(f.id), first(f.ID), first(f.slug), first(f.Slug)]\n        .filter(Boolean)\n        .map((value) => String(value).trim());\n      return possibleIds.includes(cleanId);\n    }) || null;\n  } catch {}\n\n  return null;\n}\n\nlet record;\ntry {\n  record = await findEpisodeRecord(episodeId);\n} catch (error) {\n  return { json: { statusCode: 500, error: \"Airtable episode lookup failed: \" + (error?.message || String(error)), code: \"airtable_episode_lookup_failed\" } };\n}\n\nconst recordId = String(record?.id || \"\").trim();\nif (!recordId) {\n  return { json: { statusCode: 404, error: \"Episode not found for id \" + episodeId, code: \"episode_missing\" } };\n}\n\nlet finalFields = record.fields || {};\n\nfor (const input of files) {\n  const file = String(input?.file || \"\").replace(/^data:.*?;base64,/, \"\");\n  const filename = String(input?.filename || \"media-\" + Date.now()).trim();\n  const contentType = String(input?.contentType || \"application/octet-stream\").trim();\n  const isMedia = contentType.startsWith(\"image/\") || contentType.startsWith(\"video/\");\n  const fileBytes = Math.floor((file.length * 3) / 4);\n\n  if (!file || !isMedia) {\n    return { json: { statusCode: 400, error: \"Only image and video files are accepted\", code: \"media_type_invalid\" } };\n  }\n\n  if (fileBytes > 5 * 1024 * 1024) {\n    return { json: { statusCode: 413, error: \"Chaque media doit faire moins de 5 Mo.\", code: \"media_too_large\" } };\n  }\n\n  try {\n    const uploaded = await request({\n      method: \"POST\",\n      url: uploadBase + \"/\" + encodeURIComponent(recordId) + \"/\" + encodeURIComponent(mediaField) + \"/uploadAttachment\",\n      headers: { ...headers, Accept: \"application/json\" },\n      body: { file, filename, contentType },\n      json: true,\n    });\n    finalFields = uploaded.fields || finalFields;\n  } catch (error) {\n    return { json: { statusCode: 500, error: \"Airtable media upload failed: \" + (error?.message || String(error)), code: \"airtable_media_upload_failed\" } };\n  }\n}\n\nconst mediaFromAttachments = (attachments) =>\n  (Array.isArray(attachments) ? attachments : []).map((attachment) => {\n    const contentType = String(attachment.type || \"\");\n    return {\n      id: attachment.id || \"\",\n      url: attachment.url || \"\",\n      filename: attachment.filename || \"media\",\n      type: contentType.startsWith(\"video/\") ? \"video\" : contentType.startsWith(\"image/\") ? \"image\" : \"file\",\n      contentType,\n      size: attachment.size || 0,\n    };\n  });\n\nconst media = mediaFromAttachments(finalFields[mediaField]);\n\nreturn {\n  json: {\n    episode: {\n      id: episodeId,\n      number: Number(finalFields.number || 0),\n      title: String(finalFields.title || \"\"),\n      date: String(finalFields.date || \"\"),\n      place: String(finalFields.place || \"\"),\n      duration: String(finalFields.duration || \"\"),\n      cover_url: String(finalFields.cover_url || media.find((item) => item.type === \"image\")?.url || \"\"),\n      media,\n      notes: String(finalFields.notes || \"\"),\n      music_url: String(finalFields.music_url || \"\"),\n    },\n  },\n};"
       },
       "id": "d9a0a6ce-c7e3-4774-9ef0-fd5cb3a11d92",
       "name": "Upload Episode Media",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [1040, 200]
+      "position": [
+        1040,
+        200
+      ]
     },
     {
       "parameters": {
@@ -137,7 +158,10 @@
       "name": "Respond",
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1.2,
-      "position": [1260, 200]
+      "position": [
+        1260,
+        200
+      ]
     }
   ],
   "connections": {

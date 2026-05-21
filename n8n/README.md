@@ -15,10 +15,12 @@ Importable workflow scaffolds for the webhooks and automations.
    - `CODE_MATHILDE` - secret code for Mathilde
    - `CODE_AMIS_SAMUEL` - secret code for Samuel's friends
    - `CODE_AMIS_MATHILDE` - secret code for Mathilde's friends
+   - `AIRTABLE_COMMENT_TABLE` - optional, defaults to `Comments`
+   - `AIRTABLE_COMMENT_EPISODE_FIELD` - optional, defaults to `episode`
    - `ANTHROPIC_API_KEY` - for the synthese workflow
 3. **Import workflows**:
    1. `auth.verify.json`, `auth.me.json`, `auth.logout.json`
-   2. `episodes.list.json`, `episodes.create.json`, `episodes.reviews.list.json`, `episodes.reviews.upsert.json`
+   2. `episodes.list.json`, `episodes.create.json`, `episodes.reviews.list.json`, `episodes.reviews.upsert.json`, `episodes.comments.list.json`, `episodes.comments.create.json`
    3. `ideas.list.json`, `ideas.create.json`, `ideas.vote.json`, `ideas.status.json`
    4. `votes.list.json`, `votes.cast.json`
    5. `synthese.get.json`
@@ -57,6 +59,27 @@ Unknown code -> `401 { "error": "Code invalide", "code": "invalid_group_code" }`
 
 Group codes live only in n8n environment variables. Do not expose them in the
 frontend env.
+
+## Episode Comments
+
+Create an Airtable table named `Comments` with these fields:
+
+```txt
+episode       Link to Episodes
+author_name   Single line text
+author_role   Single line text
+body          Long text
+```
+
+The app calls:
+
+```txt
+GET  /episodes/:id/comments
+POST /episodes/:id/comments
+```
+
+The write webhook uses the session headers for `author_role` and requires the
+friend to provide `author_name` and `body`.
 
 ## Authenticated Routes
 
