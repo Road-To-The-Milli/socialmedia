@@ -245,7 +245,7 @@ export function useVoteIdea() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: ({ id, kind }: { id: string; kind: "like" | "dislike" | "clear" }) =>
-      api.post<{ idea: Idea }>(`/ideas/${id}/vote`, { kind }),
+      api.post<{ idea: Idea }>("/ideas/vote", { id, kind }),
     onSuccess: (res) => {
       updateIdeaInCache(qc, res.idea);
       void qc.invalidateQueries({ queryKey: queryKeys.ideas });
@@ -257,7 +257,7 @@ export function useSetIdeaStatus() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: ({ id, status }: { id: string; status: IdeaStatus }) =>
-      api.patch<{ idea: Idea }>(`/ideas/${id}/status`, { status }),
+      api.patch<{ idea: Idea }>("/ideas/status", { id, status }),
     onSuccess: (res) => {
       updateIdeaInCache(qc, res.idea);
       void qc.invalidateQueries({ queryKey: queryKeys.ideas });

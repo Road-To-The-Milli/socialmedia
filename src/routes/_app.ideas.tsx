@@ -51,7 +51,10 @@ function IdeasPage() {
 
   const onVote = (id: string, kind: "like" | "dislike", currentVote: "like" | "dislike" | null | undefined) => {
     const next = currentVote === kind ? "clear" : kind;
-    voteIdea.mutate({ id, kind: next });
+    voteIdea.mutate(
+      { id, kind: next },
+      { onError: (err) => toast.error(err instanceof Error ? err.message : "Impossible de voter.") },
+    );
   };
 
   if (ideasQuery.isLoading) {

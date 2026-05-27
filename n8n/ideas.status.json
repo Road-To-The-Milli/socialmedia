@@ -1,5 +1,5 @@
 {
-  "name": "PATCH /ideas/:id/status",
+  "name": "PATCH /ideas/status",
   "nodes": [
     {
       "parameters": {
