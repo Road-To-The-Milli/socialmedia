@@ -6,238 +6,51 @@
         "httpMethod": "GET",
         "path": "ideas",
         "responseMode": "responseNode",
-        "options": {}
+        "options": { "allowedOrigins": "*" }
       },
       "id": "f77f0da9-b8dc-4a95-a589-73efb28c419c",
       "name": "Webhook",
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 2,
-      "position": [
-        240,
-        300
-      ],
-      "webhookId": "bcfec859-cfab-4c16-9b02-19e2e3672c2d",
-      "notes": "x-api-key (required), x-session-token (auth routes)"
-    },
-    {
-      "parameters": {
-        "conditions": {
-          "options": {
-            "caseSensitive": true,
-            "typeValidation": "strict"
-          },
-          "conditions": [
-            {
-              "id": "4226b3c4-6526-430f-b296-ef5187fc8dc5",
-              "leftValue": "={{ $json.headers[\"x-api-key\"] }}",
-              "rightValue": "={{ $env.SHARED_API_KEY }}",
-              "operator": {
-                "type": "string",
-                "operation": "equals"
-              }
-            }
-          ],
-          "combinator": "and"
-        },
-        "options": {}
-      },
-      "id": "adcf2397-5e42-48da-800e-70dfb6d24d35",
-      "name": "API Key Guard",
-      "type": "n8n-nodes-base.if",
-      "typeVersion": 2.2,
-      "position": [
-        460,
-        300
-      ]
-    },
-    {
-      "parameters": {
-        "respondWith": "json",
-        "responseBody": "={{ JSON.stringify({ error: \"unauthorized\", code: \"no_key\" }) }}",
-        "options": {
-          "responseCode": 401
-        }
-      },
-      "id": "c7f257ba-a9e1-4368-b5f1-ae61f076cef3",
-      "name": "401 Unauthorized",
-      "type": "n8n-nodes-base.respondToWebhook",
-      "typeVersion": 1.2,
-      "position": [
-        680,
-        460
-      ]
+      "position": [240, 300],
+      "webhookId": "bcfec859-cfab-4c16-9b02-19e2e3672c2d"
     },
     {
       "parameters": {
         "mode": "runOnceForEachItem",
-        "jsCode": "// TODO: replace with Airtable Search on Users\n// Filter formula: AND({session_token} = \"{{ $json.headers['x-session-token'] }}\", IS_AFTER({session_expires_at}, NOW()))\n// Then return the user record under `session` so downstream nodes can reach it via $('Session Lookup').\nconst token = $json.headers[\"x-session-token\"];\nif (!token) throw new Error(\"no_session_token\");\nreturn { json: { _todo: \"wire to Airtable Users search\", token } };"
+        "jsCode": "const CONFIG = {\n  AIRTABLE_PAT: $env.AIRTABLE_PAT || $env.AIRTABLE_API_KEY || \"\",\n  AIRTABLE_BASE_ID: $env.AIRTABLE_BASE_ID || \"\",\n  SHARED_API_KEY: $env.SHARED_API_KEY || \"\",\n  IDEAS_TABLE: $env.AIRTABLE_IDEAS_TABLE || \"Ideas\",\n};\n\nconst headersIn = $json.headers || {};\n\nif (String(headersIn[\"x-api-key\"] || \"\") !== CONFIG.SHARED_API_KEY) {\n  return { json: { statusCode: 401, body: { error: \"unauthorized\", code: \"no_key\" } } };\n}\nconst sessionToken = String(headersIn[\"x-session-token\"] || \"\").trim();\nif (!sessionToken) {\n  return { json: { statusCode: 401, body: { error: \"Session required\", code: \"session_missing\" } } };\n}\nif (!CONFIG.AIRTABLE_PAT || !CONFIG.AIRTABLE_BASE_ID) {\n  return { json: { statusCode: 200, body: { ideas: [] } } };\n}\n\nconst request = this.helpers.httpRequest.bind(this.helpers);\nconst airtable = \"https://api.airtable.com/v0/\" + CONFIG.AIRTABLE_BASE_ID;\nconst headers = { Authorization: \"Bearer \" + CONFIG.AIRTABLE_PAT };\nconst userId = String(headersIn[\"x-user-id\"] || \"\").trim();\n\n// Paginate through all ideas, sorted newest first\nlet records = [];\nlet offset;\ndo {\n  const url = airtable + \"/\" + encodeURIComponent(CONFIG.IDEAS_TABLE)\n    + \"?pageSize=100\"\n    + (offset ? \"&offset=\" + encodeURIComponent(offset) : \"\");\n  const data = await request({ method: \"GET\", url, headers, json: true });\n  records = records.concat(data.records || []);\n  offset = data.offset;\n} while (offset);\n\nconst ideas = records.map(r => {\n  const f = r.fields || {};\n  let likes = [];\n  let dislikes = [];\n  try { likes = JSON.parse(f.likes || \"[]\"); } catch { likes = []; }\n  try { dislikes = JSON.parse(f.dislikes || \"[]\"); } catch { dislikes = []; }\n  if (!Array.isArray(likes)) likes = [];\n  if (!Array.isArray(dislikes)) dislikes = [];\n\n  const myVote = userId\n    ? (likes.includes(userId) ? \"like\" : dislikes.includes(userId) ? \"dislike\" : null)\n    : null;\n\n  return {\n    id: String(f.id || r.id),\n    title: String(f.title || \"\"),\n    description: String(f.description || \"\"),\n    proposed_by_id: String(f.proposed_by || \"\"),\n    proposed_by_name: String(f.proposed_by_name || f.proposed_by || \"\"),\n    status: String(f.status || \"voting\"),\n    likes,\n    dislikes,\n    my_vote: myVote,\n  };\n});\n\nreturn { json: { statusCode: 200, body: { ideas } } };"
       },
-      "id": "ae5f243d-0347-4042-94ed-fa71b6362c5f",
-      "name": "Session Lookup",
+      "id": "c3d4e5f6-a7b8-9012-cdef-123456789012",
+      "name": "List Ideas",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [
-        680,
-        200
-      ]
-    },
-    {
-      "parameters": {
-        "conditions": {
-          "options": {
-            "caseSensitive": true,
-            "typeValidation": "strict"
-          },
-          "conditions": [
-            {
-              "id": "fd334fd9-b63b-4fff-8a7c-8c2349b7bebb",
-              "leftValue": "={{ Boolean($json.token) }}",
-              "rightValue": "={{ true }}",
-              "operator": {
-                "type": "boolean",
-                "operation": "true",
-                "singleValue": true
-              }
-            }
-          ],
-          "combinator": "and"
-        },
-        "options": {}
-      },
-      "id": "0cb1f295-07ea-4009-827e-bd4445f526af",
-      "name": "Session Guard",
-      "type": "n8n-nodes-base.if",
-      "typeVersion": 2.2,
-      "position": [
-        820,
-        200
-      ]
+      "position": [480, 300]
     },
     {
       "parameters": {
         "respondWith": "json",
-        "responseBody": "={{ JSON.stringify({ error: \"expired\", code: \"session_invalid\" }) }}",
+        "responseBody": "={{ JSON.stringify($json.body) }}",
         "options": {
-          "responseCode": 401
+          "responseCode": "={{ $json.statusCode || 200 }}"
         }
       },
-      "id": "a7ff6f95-306d-4c10-9812-079ba4c4201c",
-      "name": "401 Session Expired",
-      "type": "n8n-nodes-base.respondToWebhook",
-      "typeVersion": 1.2,
-      "position": [
-        1040,
-        360
-      ]
-    },
-    {
-      "parameters": {
-        "mode": "runOnceForEachItem",
-        "jsCode": "// HANDOFF.md §3.8\n// 1. Read all Ideas\n// 2. For each: compute my_vote based on session.user_id presence in likes/dislikes\n// 3. Respond { ideas: [...] }\nreturn [{ json: { ideas: [] } }];"
-      },
-      "id": "07590121-7f5b-437b-af39-342fef23024e",
-      "name": "TODO — Implement logic",
-      "type": "n8n-nodes-base.code",
-      "typeVersion": 2,
-      "position": [
-        900,
-        200
-      ]
-    },
-    {
-      "parameters": {
-        "respondWith": "json",
-        "responseBody": "={{ JSON.stringify($json) }}",
-        "options": {}
-      },
-      "id": "63193a79-d01e-431e-95b7-d99adcd7f7c1",
+      "id": "d4e5f6a7-b8c9-0123-defa-234567890123",
       "name": "Respond",
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1.2,
-      "position": [
-        1120,
-        200
-      ]
+      "position": [720, 300]
     }
   ],
   "connections": {
     "Webhook": {
-      "main": [
-        [
-          {
-            "node": "API Key Guard",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
+      "main": [[{ "node": "List Ideas", "type": "main", "index": 0 }]]
     },
-    "API Key Guard": {
-      "main": [
-        [
-          {
-            "node": "Session Lookup",
-            "type": "main",
-            "index": 0
-          }
-        ],
-        [
-          {
-            "node": "401 Unauthorized",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Session Lookup": {
-      "main": [
-        [
-          {
-            "node": "Session Guard",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Session Guard": {
-      "main": [
-        [
-          {
-            "node": "TODO — Implement logic",
-            "type": "main",
-            "index": 0
-          }
-        ],
-        [
-          {
-            "node": "401 Session Expired",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "TODO — Implement logic": {
-      "main": [
-        [
-          {
-            "node": "Respond",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
+    "List Ideas": {
+      "main": [[{ "node": "Respond", "type": "main", "index": 0 }]]
     }
   },
   "pinData": {},
-  "settings": {
-    "executionOrder": "v1"
-  },
+  "settings": { "executionOrder": "v1" },
   "active": false,
-  "meta": {
-    "templateCredsSetupCompleted": false,
-    "handoffSection": "HANDOFF.md §3"
-  }
+  "meta": { "templateCredsSetupCompleted": false }
 }

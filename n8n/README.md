@@ -5,6 +5,8 @@ Importable workflow scaffolds for the webhooks and automations.
 ## Import order
 
 1. **Credentials first** - set up `Airtable PAT` with access to your base.
+   The token must include `data.records:read` and `data.records:write`; without
+   write access, comment creation returns Airtable `403`.
 2. **Environment variables** in n8n:
    - `AIRTABLE_BASE_ID` - appXXXXXXXXXXXX
    - `AIRTABLE_PAT` or `AIRTABLE_API_KEY`
@@ -60,6 +62,31 @@ Unknown code -> `401 { "error": "Code invalide", "code": "invalid_group_code" }`
 Group codes live only in n8n environment variables. Do not expose them in the
 frontend env.
 
+## Ideas
+
+Create an Airtable table named `Ideas` (or set `AIRTABLE_IDEAS_TABLE`) with these fields:
+
+```txt
+title             Single line text
+description       Long text
+proposed_by_id    Single line text
+proposed_by_name  Single line text
+status            Single select  (voting | selected | scheduled | done)
+likes             Long text      (JSON array of user IDs, e.g. ["rec123","rec456"])
+dislikes          Long text      (JSON array of user IDs)
+```
+
+The app calls:
+
+```txt
+GET   /ideas
+POST  /ideas
+POST  /ideas/:id/vote   { kind: "like" | "dislike" | "clear" }
+PATCH /ideas/:id/status { status: "voting" | "selected" | "scheduled" | "done" }
+```
+
+`likes` and `dislikes` are serialized JSON strings. The workflows parse/stringify them automatically.
+
 ## Episode Comments
 
 Create an Airtable table named `Comments` with these fields:
@@ -70,6 +97,11 @@ author_name   Single line text
 author_role   Single line text
 body          Long text
 ```
+
+If `POST /episodes/:id/comments` returns
+`airtable_comment_permission_denied`, regenerate the Airtable PAT with
+`data.records:write` and make sure the token is authorized on the base that
+contains the `Comments` table.
 
 The app calls:
 
