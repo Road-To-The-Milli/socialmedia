@@ -34,6 +34,7 @@ import type {
  */
 
 const VOTE_LS_KEY = "nc_votes";
+const BUZZ_VOTE_LS_KEY = "nc_buzz_idea_votes";
 const LIVE_STALE_TIME = 60 * 1000;
 const MEDIA_UPSERT_PATH_PREFIX = "/e6d7fbaf-bbb1-4b28-8ae1-cdc0f5c5f6c1/episodes";
 const REVIEW_LIST_PATH_PREFIX = "/6483ce95-fa1a-4ffd-9982-3348d437d928/episodes";
@@ -54,6 +55,27 @@ function readLocalVotes(): Record<string, string> {
 function writeLocalVotes(map: Record<string, string>): void {
   if (typeof window === "undefined") return;
   localStorage.setItem(VOTE_LS_KEY, JSON.stringify(map));
+}
+
+function readBuzzIdeaVotes(): Record<string, "like" | "dislike"> {
+  if (typeof window === "undefined") return {};
+  try {
+    const raw = localStorage.getItem(BUZZ_VOTE_LS_KEY);
+    return raw ? (JSON.parse(raw) as Record<string, "like" | "dislike">) : {};
+  } catch {
+    return {};
+  }
+}
+
+function writeBuzzIdeaVote(ideaId: string, kind: "like" | "dislike" | "clear"): void {
+  if (typeof window === "undefined") return;
+  const map = readBuzzIdeaVotes();
+  if (kind === "clear") {
+    delete map[ideaId];
+  } else {
+    map[ideaId] = kind;
+  }
+  localStorage.setItem(BUZZ_VOTE_LS_KEY, JSON.stringify(map));
 }
 
 export const queryKeys = {
