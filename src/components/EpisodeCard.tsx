@@ -26,11 +26,18 @@ export function EpisodeCard({ ep, index = 0 }: { ep: Episode; index?: number }) 
         </div>
         <div className="absolute bottom-0 inset-x-0 p-3">
           <h3 className="font-bold text-base leading-tight line-clamp-2">{ep.title}</h3>
-          <p className="text-xs text-muted-foreground mt-1">
-            {new Date(ep.date).toLocaleDateString("fr-FR", { day: "numeric", month: "long" })}
-            {" · "}
-            {ep.place}
-          </p>
+          <div className="flex items-center justify-between mt-1">
+            <p className="text-xs text-muted-foreground">
+              {new Date(ep.date).toLocaleDateString("fr-FR", { day: "numeric", month: "long" })}
+              {" · "}
+              {ep.place}
+            </p>
+            {(ep.likes?.length ?? 0) > 0 && (
+              <span className="text-xs text-red-400 font-semibold flex items-center gap-0.5">
+                ❤️ {ep.likes!.length}
+              </span>
+            )}
+          </div>
         </div>
       </div>
     </Link>
