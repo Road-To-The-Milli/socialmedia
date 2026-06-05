@@ -132,24 +132,27 @@ function EpisodeDetail() {
                 )}
               </span>
             )}
-            <button
-              onClick={() =>
-                likeEpisode.mutate(
-                  { id: ep.id, kind: ep.my_like ? "clear" : "like" },
-                  { onError: () => toast.error("Impossible de liker.") },
-                )
-              }
-              disabled={likeEpisode.isPending}
-              className={`inline-flex items-center gap-1 rounded-full border px-3 py-1 transition ${
-                ep.my_like
-                  ? "border-red-400 bg-red-400/20 text-red-400"
-                  : "border-border hover:border-red-400 hover:text-red-400"
-              }`}
-            >
-              <Heart className={`w-4 h-4 ${ep.my_like ? "fill-red-400" : ""}`} />
-              {ep.likes?.length ?? 0}
-            </button>
           </div>
+          <button
+            onClick={() =>
+              likeEpisode.mutate(
+                { id: ep.id, kind: ep.my_like ? "clear" : "like" },
+                { onError: () => toast.error("Impossible de liker.") },
+              )
+            }
+            disabled={likeEpisode.isPending}
+            className={`mt-4 inline-flex items-center gap-2 rounded-full border-2 px-5 py-2.5 font-bold text-base transition-all duration-200 ${
+              ep.my_like
+                ? "border-red-400 bg-red-400/25 text-red-300 scale-105"
+                : "border-white/30 bg-white/10 text-white hover:border-red-400 hover:bg-red-400/20 hover:text-red-300"
+            }`}
+          >
+            <Heart className={`w-5 h-5 transition-all ${ep.my_like ? "fill-red-400 text-red-400 scale-110" : ""}`} />
+            {ep.my_like ? "Tu kiffes ❤️" : "Kiffe cet épisode"}
+            {(ep.likes?.length ?? 0) > 0 && (
+              <span className="ml-1 text-sm opacity-70">{ep.likes!.length}</span>
+            )}
+          </button>
         </div>
       </div>
 
@@ -187,11 +190,40 @@ function EpisodeDetail() {
       </div>
 
       {myReview && !seasonUnlocked && couplePartner && (
-        <p className="max-w-4xl mx-auto px-4 sm:px-6 -mt-4 pb-10 text-center text-xs text-muted-foreground">
+        <p className="max-w-4xl mx-auto px-4 sm:px-6 -mt-4 pb-6 text-center text-xs text-muted-foreground">
           ✨ Tu as livré ton compte rendu. Celui de {ROLE_LABEL[couplePartner].label} sera révélé
           à la fin de la saison.
         </p>
       )}
+
+      <div className="max-w-4xl mx-auto px-4 sm:px-6 pb-10 flex flex-col items-center gap-2">
+        <button
+          onClick={() =>
+            likeEpisode.mutate(
+              { id: ep.id, kind: ep.my_like ? "clear" : "like" },
+              { onError: () => toast.error("Impossible de liker.") },
+            )
+          }
+          disabled={likeEpisode.isPending}
+          className={`group inline-flex items-center gap-3 rounded-2xl border-2 px-8 py-4 font-black text-xl tracking-tight transition-all duration-200 shadow-lg ${
+            ep.my_like
+              ? "border-red-400 bg-red-400/20 text-red-300 shadow-red-400/20"
+              : "border-border bg-card text-foreground hover:border-red-400 hover:bg-red-400/10 hover:text-red-300 hover:shadow-red-400/10"
+          }`}
+        >
+          <Heart
+            className={`w-7 h-7 transition-all duration-300 ${
+              ep.my_like ? "fill-red-400 text-red-400 scale-125" : "group-hover:scale-110"
+            }`}
+          />
+          {ep.my_like ? "Tu kiffes cet épisode !" : "Je kiffe cet épisode"}
+        </button>
+        {(ep.likes?.length ?? 0) > 0 && (
+          <p className="text-xs text-muted-foreground">
+            {ep.likes!.length} personne{ep.likes!.length > 1 ? "s kiffent" : " kiffe"} cet épisode
+          </p>
+        )}
+      </div>
 
       <MediaSection
         episode={ep}
