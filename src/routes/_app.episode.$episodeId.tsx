@@ -4,6 +4,7 @@ import {
   ArrowLeft,
   Calendar,
   Film,
+  Heart,
   ImagePlus,
   Loader2,
   Lock,
@@ -22,6 +23,8 @@ import {
   useEpisodeComments,
   useEpisodeReviews,
   useEpisodes,
+  useLikeEpisode,
+  useReactToComment,
   useSaveReview,
   useUploadEpisodeMedia,
 } from "@/lib/store";
@@ -62,6 +65,8 @@ function EpisodeDetail() {
   const saveReview = useSaveReview(episodeId);
   const createComment = useCreateEpisodeComment(episodeId);
   const uploadMedia = useUploadEpisodeMedia(episodeId);
+  const likeEpisode = useLikeEpisode();
+  const reactToComment = useReactToComment(episodeId);
 
   if (episodesQuery.isLoading || reviewsQuery.isLoading) {
     return (
@@ -127,6 +132,23 @@ function EpisodeDetail() {
                 )}
               </span>
             )}
+            <button
+              onClick={() =>
+                likeEpisode.mutate(
+                  { id: ep.id, kind: ep.my_like ? "clear" : "like" },
+                  { onError: () => toast.error("Impossible de liker.") },
+                )
+              }
+              disabled={likeEpisode.isPending}
+              className={`inline-flex items-center gap-1 rounded-full border px-3 py-1 transition ${
+                ep.my_like
+                  ? "border-red-400 bg-red-400/20 text-red-400"
+                  : "border-border hover:border-red-400 hover:text-red-400"
+              }`}
+            >
+              <Heart className={`w-4 h-4 ${ep.my_like ? "fill-red-400" : ""}`} />
+              {ep.likes?.length ?? 0}
+            </button>
           </div>
         </div>
       </div>
@@ -189,6 +211,13 @@ function EpisodeDetail() {
         comments={commentsQuery.data?.comments ?? []}
         loading={commentsQuery.isLoading}
         saving={createComment.isPending}
+        userId={user?.id}
+        onReact={(commentId, emoji, kind) =>
+          reactToComment.mutate(
+            { id: commentId, emoji, kind },
+            { onError: () => toast.error("Impossible de réagir.") },
+          )
+        }
         onSubmit={async (draft) => {
           const res = await createComment.mutateAsync(draft);
           toast.success("Commentaire ajoute");
@@ -199,15 +228,21 @@ function EpisodeDetail() {
   );
 }
 
+const REACTION_EMOJIS = ["❤️", "😂", "🔥", "😮", "👏"];
+
 function CommentsSection({
   comments,
   loading,
   saving,
+  userId,
+  onReact,
   onSubmit,
 }: {
   comments: EpisodeComment[];
   loading: boolean;
   saving: boolean;
+  userId?: string;
+  onReact: (commentId: string, emoji: string, kind: "add" | "remove") => void;
   onSubmit: (draft: { author_name: string; body: string }) => Promise<EpisodeComment>;
 }) {
   const [name, setName] = useState("");
@@ -308,6 +343,28 @@ function CommentsSection({
                     )}
                   </div>
                   <p className="mt-3 whitespace-pre-wrap text-sm leading-6">{comment.body}</p>
+                  <div className="mt-2 flex flex-wrap gap-1">
+                    {REACTION_EMOJIS.map((emoji) => {
+                      const users = comment.reactions?.[emoji] ?? [];
+                      const mine = userId ? users.includes(userId) : false;
+                      return (
+                        <button
+                          key={emoji}
+                          onClick={() => onReact(comment.id, emoji, mine ? "remove" : "add")}
+                          className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs transition ${
+                            mine
+                              ? "border-primary bg-primary/15 text-primary"
+                              : "border-border hover:border-primary/50"
+                          }`}
+                        >
+                          {emoji}
+                          {users.length > 0 && (
+                            <span className="text-[10px] font-semibold">{users.length}</span>
+                          )}
+                        </button>
+                      );
+                    })}
+                  </div>
                 </article>
               ))}
             </div>

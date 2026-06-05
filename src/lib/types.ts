@@ -23,6 +23,8 @@ export interface Episode {
   media?: EpisodeMedia[];
   notes?: string;
   music_url?: string;
+  likes?: string[];
+  my_like?: boolean | null;
 }
 
 export interface EpisodeMedia {
@@ -93,6 +95,7 @@ export interface EpisodeComment {
   author_role?: Role;
   body: string;
   created_at: string;
+  reactions?: Record<string, string[]>;
 }
 
 export interface EpisodeCommentDraft {
