@@ -55,6 +55,19 @@ export function clearSession(): void {
   localStorage.removeItem(SESSION_KEY);
 }
 
+const DEVICE_ID_KEY = "nc_device_id";
+const FRIEND_ROLES = ["amis_samuel", "amis_mathilde"];
+
+function getDeviceId(): string {
+  if (typeof window === "undefined") return "server";
+  let id = localStorage.getItem(DEVICE_ID_KEY);
+  if (!id) {
+    id = crypto.randomUUID();
+    localStorage.setItem(DEVICE_ID_KEY, id);
+  }
+  return id;
+}
+
 async function request<T>(
   method: "GET" | "POST" | "PATCH" | "DELETE",
   path: string,
@@ -68,7 +81,8 @@ async function request<T>(
   const session = readSession();
   if (session?.session_token) headers["x-session-token"] = session.session_token;
   if (session?.user) {
-    headers["x-user-id"] = session.user.id;
+    const isFriend = FRIEND_ROLES.includes(session.user.role);
+    headers["x-user-id"] = isFriend ? getDeviceId() : session.user.id;
     headers["x-user-name"] = session.user.name;
     headers["x-user-role"] = session.user.role;
   }
