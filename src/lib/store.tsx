@@ -23,6 +23,9 @@ import type {
   VoteQuestion,
 } from "./types";
 
+type EpisodeLikeResult = Pick<Episode, "id" | "likes" | "my_like">;
+type CommentReactResult = Pick<EpisodeComment, "id" | "reactions">;
+
 /**
  * Server state for Nous & Chill.
  *
@@ -294,6 +297,42 @@ export function useVoteIdea() {
     onSuccess: (res) => {
       updateIdeaInCache(qc, res.idea);
       if (!isBuzzIdea(res.idea.id)) void qc.invalidateQueries({ queryKey: queryKeys.ideas });
+    },
+  });
+}
+
+export function useLikeEpisode() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, kind }: { id: string; kind: "like" | "clear" }) =>
+      api.post<{ episode: EpisodeLikeResult }>("/episodes/like", { id, kind }),
+    onSuccess: (res) => {
+      qc.setQueryData<Episode[]>(queryKeys.episodes, (episodes = []) =>
+        episodes.map((ep) =>
+          ep.id === res.episode.id
+            ? { ...ep, likes: res.episode.likes ?? [], my_like: res.episode.my_like ?? null }
+            : ep,
+        ),
+      );
+    },
+  });
+}
+
+export function useReactToComment(episodeId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, emoji, kind }: { id: string; emoji: string; kind: "add" | "remove" }) =>
+      api.post<{ comment: CommentReactResult }>("/comments/react", { id, emoji, kind }),
+    onSuccess: (res) => {
+      qc.setQueryData<EpisodeCommentsResponse>(queryKeys.episodeComments(episodeId), (current) => {
+        if (!current) return current;
+        return {
+          ...current,
+          comments: current.comments.map((c) =>
+            c.id === res.comment.id ? { ...c, reactions: res.comment.reactions } : c,
+          ),
+        };
+      });
     },
   });
 }
