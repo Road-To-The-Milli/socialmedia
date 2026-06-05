@@ -148,7 +148,7 @@ function EpisodeDetail() {
             }`}
           >
             <Heart className={`w-5 h-5 transition-all ${ep.my_like ? "fill-red-400 text-red-400 scale-110" : ""}`} />
-            {ep.my_like ? "Tu kiffes ❤️" : "Kiffe cet épisode"}
+            {ep.my_like ? "J'aime ❤️" : "J'aime"}
             {(ep.likes?.length ?? 0) > 0 && (
               <span className="ml-1 text-sm opacity-70">{ep.likes!.length}</span>
             )}
