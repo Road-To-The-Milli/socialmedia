@@ -9,16 +9,20 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as SignupRouteImport } from './routes/signup'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as AppRouteImport } from './routes/_app'
 import { Route as AppIndexRouteImport } from './routes/_app.index'
 import { Route as AuthCallbackRouteImport } from './routes/auth.callback'
-import { Route as AppVoteRouteImport } from './routes/_app.vote'
 import { Route as AppTimelineRouteImport } from './routes/_app.timeline'
-import { Route as AppSyntheseRouteImport } from './routes/_app.synthese'
 import { Route as AppIdeasRouteImport } from './routes/_app.ideas'
 import { Route as AppEpisodeEpisodeIdRouteImport } from './routes/_app.episode.$episodeId'
 
+const SignupRoute = SignupRouteImport.update({
+  id: '/signup',
+  path: '/signup',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const LoginRoute = LoginRouteImport.update({
   id: '/login',
   path: '/login',
@@ -38,19 +42,9 @@ const AuthCallbackRoute = AuthCallbackRouteImport.update({
   path: '/auth/callback',
   getParentRoute: () => rootRouteImport,
 } as any)
-const AppVoteRoute = AppVoteRouteImport.update({
-  id: '/vote',
-  path: '/vote',
-  getParentRoute: () => AppRoute,
-} as any)
 const AppTimelineRoute = AppTimelineRouteImport.update({
   id: '/timeline',
   path: '/timeline',
-  getParentRoute: () => AppRoute,
-} as any)
-const AppSyntheseRoute = AppSyntheseRouteImport.update({
-  id: '/synthese',
-  path: '/synthese',
   getParentRoute: () => AppRoute,
 } as any)
 const AppIdeasRoute = AppIdeasRouteImport.update({
@@ -67,19 +61,17 @@ const AppEpisodeEpisodeIdRoute = AppEpisodeEpisodeIdRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof AppIndexRoute
   '/login': typeof LoginRoute
+  '/signup': typeof SignupRoute
   '/ideas': typeof AppIdeasRoute
-  '/synthese': typeof AppSyntheseRoute
   '/timeline': typeof AppTimelineRoute
-  '/vote': typeof AppVoteRoute
   '/auth/callback': typeof AuthCallbackRoute
   '/episode/$episodeId': typeof AppEpisodeEpisodeIdRoute
 }
 export interface FileRoutesByTo {
   '/login': typeof LoginRoute
+  '/signup': typeof SignupRoute
   '/ideas': typeof AppIdeasRoute
-  '/synthese': typeof AppSyntheseRoute
   '/timeline': typeof AppTimelineRoute
-  '/vote': typeof AppVoteRoute
   '/auth/callback': typeof AuthCallbackRoute
   '/': typeof AppIndexRoute
   '/episode/$episodeId': typeof AppEpisodeEpisodeIdRoute
@@ -88,10 +80,9 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/_app': typeof AppRouteWithChildren
   '/login': typeof LoginRoute
+  '/signup': typeof SignupRoute
   '/_app/ideas': typeof AppIdeasRoute
-  '/_app/synthese': typeof AppSyntheseRoute
   '/_app/timeline': typeof AppTimelineRoute
-  '/_app/vote': typeof AppVoteRoute
   '/auth/callback': typeof AuthCallbackRoute
   '/_app/': typeof AppIndexRoute
   '/_app/episode/$episodeId': typeof AppEpisodeEpisodeIdRoute
@@ -101,19 +92,17 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/login'
+    | '/signup'
     | '/ideas'
-    | '/synthese'
     | '/timeline'
-    | '/vote'
     | '/auth/callback'
     | '/episode/$episodeId'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/login'
+    | '/signup'
     | '/ideas'
-    | '/synthese'
     | '/timeline'
-    | '/vote'
     | '/auth/callback'
     | '/'
     | '/episode/$episodeId'
@@ -121,10 +110,9 @@ export interface FileRouteTypes {
     | '__root__'
     | '/_app'
     | '/login'
+    | '/signup'
     | '/_app/ideas'
-    | '/_app/synthese'
     | '/_app/timeline'
-    | '/_app/vote'
     | '/auth/callback'
     | '/_app/'
     | '/_app/episode/$episodeId'
@@ -133,11 +121,19 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   AppRoute: typeof AppRouteWithChildren
   LoginRoute: typeof LoginRoute
+  SignupRoute: typeof SignupRoute
   AuthCallbackRoute: typeof AuthCallbackRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/signup': {
+      id: '/signup'
+      path: '/signup'
+      fullPath: '/signup'
+      preLoaderRoute: typeof SignupRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/login': {
       id: '/login'
       path: '/login'
@@ -166,25 +162,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthCallbackRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/_app/vote': {
-      id: '/_app/vote'
-      path: '/vote'
-      fullPath: '/vote'
-      preLoaderRoute: typeof AppVoteRouteImport
-      parentRoute: typeof AppRoute
-    }
     '/_app/timeline': {
       id: '/_app/timeline'
       path: '/timeline'
       fullPath: '/timeline'
       preLoaderRoute: typeof AppTimelineRouteImport
-      parentRoute: typeof AppRoute
-    }
-    '/_app/synthese': {
-      id: '/_app/synthese'
-      path: '/synthese'
-      fullPath: '/synthese'
-      preLoaderRoute: typeof AppSyntheseRouteImport
       parentRoute: typeof AppRoute
     }
     '/_app/ideas': {
@@ -206,18 +188,14 @@ declare module '@tanstack/react-router' {
 
 interface AppRouteChildren {
   AppIdeasRoute: typeof AppIdeasRoute
-  AppSyntheseRoute: typeof AppSyntheseRoute
   AppTimelineRoute: typeof AppTimelineRoute
-  AppVoteRoute: typeof AppVoteRoute
   AppIndexRoute: typeof AppIndexRoute
   AppEpisodeEpisodeIdRoute: typeof AppEpisodeEpisodeIdRoute
 }
 
 const AppRouteChildren: AppRouteChildren = {
   AppIdeasRoute: AppIdeasRoute,
-  AppSyntheseRoute: AppSyntheseRoute,
   AppTimelineRoute: AppTimelineRoute,
-  AppVoteRoute: AppVoteRoute,
   AppIndexRoute: AppIndexRoute,
   AppEpisodeEpisodeIdRoute: AppEpisodeEpisodeIdRoute,
 }
@@ -227,6 +205,7 @@ const AppRouteWithChildren = AppRoute._addFileChildren(AppRouteChildren)
 const rootRouteChildren: RootRouteChildren = {
   AppRoute: AppRouteWithChildren,
   LoginRoute: LoginRoute,
+  SignupRoute: SignupRoute,
   AuthCallbackRoute: AuthCallbackRoute,
 }
 export const routeTree = rootRouteImport

@@ -1,9 +1,10 @@
-export type Role = "samuel" | "mathilde" | "amis_samuel" | "amis_mathilde";
+export type Role = "aventurier" | "ami";
 
 export interface User {
   id: string;
   name: string;
   role: Role;
+  email?: string;
 }
 
 export interface Session {
@@ -61,6 +62,7 @@ export type WouldRedo = "yes" | "no" | "maybe" | "";
 
 export interface Review {
   id: string;
+  author_id: string;
   author_role: Role;
   author_name: string;
   rating: number;
@@ -99,7 +101,6 @@ export interface EpisodeComment {
 }
 
 export interface EpisodeCommentDraft {
-  author_name: string;
   body: string;
 }
 
@@ -121,19 +122,3 @@ export interface Idea {
   my_vote?: "like" | "dislike" | null;
 }
 
-export interface VoteQuestion {
-  id: string;
-  question: string;
-  options: string[];
-  results: Record<string, number>;
-  total: number;
-  my_choice?: string | null;
-}
-
-export interface Synthese {
-  body_md: string | null;
-  generated_at?: string;
-  avg_rating?: number;
-  best_episode_id?: string;
-  season_unlocked: boolean;
-}

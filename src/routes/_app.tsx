@@ -1,11 +1,12 @@
 import { createFileRoute, Outlet, redirect } from "@tanstack/react-router";
 import { NavBar } from "@/components/NavBar";
+import { supabase } from "@/lib/supabase";
 
 export const Route = createFileRoute("/_app")({
-  beforeLoad: ({ location }) => {
+  beforeLoad: async ({ location }) => {
     if (typeof window === "undefined") return;
-    const raw = localStorage.getItem("nc_session");
-    if (!raw) {
+    const { data } = await supabase.auth.getSession();
+    if (!data.session) {
       throw redirect({ to: "/login", search: { redirect: location.href } });
     }
   },

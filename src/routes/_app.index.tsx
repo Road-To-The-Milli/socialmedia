@@ -53,8 +53,8 @@ function Dashboard() {
               {featured.title}
             </h1>
             <p className="text-base sm:text-lg text-muted-foreground max-w-xl mb-6">
-              La série romantique non officielle de Samuel &amp; Mathilde. {episodes.length}{" "}
-              épisodes au compteur. Spoilers garantis.
+              Le carnet de bord de notre aventure, épisode par épisode. {episodes.length} épisodes
+              au compteur. Spoilers garantis.
             </p>
             <div className="flex flex-wrap gap-3">
               <Link
@@ -122,25 +122,6 @@ function Dashboard() {
         )}
       </section>
 
-      <section className="max-w-7xl mx-auto px-4 sm:px-6 mt-16">
-        <div
-          className="rounded-2xl p-8 sm:p-10 text-center"
-          style={{ background: "var(--gradient-red)" }}
-        >
-          <h2 className="text-2xl sm:text-3xl font-black tracking-tight mb-2">
-            Le verdict approche.
-          </h2>
-          <p className="text-white/90 mb-5 max-w-lg mx-auto">
-            Dans 1 mois et demi, vote final, jury de famille élargie, options absurdes garanties.
-          </p>
-          <Link
-            to="/vote"
-            className="inline-block bg-background text-foreground font-bold px-6 py-3 rounded-md hover:scale-105 transition"
-          >
-            🎟 Préparer mon vote
-          </Link>
-        </div>
-      </section>
     </div>
   );
 }

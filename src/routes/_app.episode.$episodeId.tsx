@@ -14,7 +14,6 @@ import {
   Send,
   Star,
   Upload,
-  UserRound,
 } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "@/lib/auth";
@@ -31,6 +30,7 @@ import {
 import type {
   Episode,
   EpisodeComment,
+  EpisodeCommentDraft,
   EpisodeMedia,
   EpisodeMediaUpload,
   Review,
@@ -43,17 +43,13 @@ export const Route = createFileRoute("/_app/episode/$episodeId")({
   component: EpisodeDetail,
 });
 
-const COUPLE: Role[] = ["samuel", "mathilde"];
-
 function canUploadEpisodeMedia(role: Role | undefined): boolean {
-  return role === "samuel" || role === "mathilde";
+  return role === "aventurier";
 }
 
 const ROLE_LABEL: Record<Role, { label: string; emoji: string }> = {
-  samuel: { label: "Samuel", emoji: "🎬" },
-  mathilde: { label: "Mathilde", emoji: "🌹" },
-  amis_samuel: { label: "Amis de Samuel", emoji: "🍻" },
-  amis_mathilde: { label: "Amis de Mathilde", emoji: "💅" },
+  aventurier: { label: "Aventurier", emoji: "🧭" },
+  ami: { label: "Ami", emoji: "🌟" },
 };
 
 function EpisodeDetail() {
@@ -90,10 +86,9 @@ function EpisodeDetail() {
   const myRole = user?.role;
   const canManageMedia = canUploadEpisodeMedia(myRole);
 
-  const reviewByRole = (role: Role) => reviews.find((r) => r.author_role === role);
-  const myReview = myRole ? reviews.find((r) => r.author_role === myRole) : undefined;
-  const couplePartner: Role | null =
-    myRole === "samuel" ? "mathilde" : myRole === "mathilde" ? "samuel" : null;
+  const myReview = user ? reviews.find((r) => r.author_id === user.id) : undefined;
+  const otherReviews = user ? reviews.filter((r) => r.author_id !== user.id) : reviews;
+  const hasHiddenReviews = !seasonUnlocked && otherReviews.length > 0;
   return (
     <div>
       <div className="relative h-[50vh] min-h-[340px] -mt-14">
@@ -125,7 +120,7 @@ function EpisodeDetail() {
               <span className="inline-flex items-center gap-1">
                 <Star className="w-4 h-4 fill-accent text-accent" />
                 {avg.toFixed(1)}/5
-                {!seasonUnlocked && couplePartner && (
+                {hasHiddenReviews && (
                   <span className="ml-1 inline-flex items-center text-xs">
                     <Lock className="w-3 h-3" />
                   </span>
@@ -147,7 +142,9 @@ function EpisodeDetail() {
                 : "border-white/30 bg-white/10 text-white hover:border-red-400 hover:bg-red-400/20 hover:text-red-300"
             }`}
           >
-            <Heart className={`w-5 h-5 transition-all ${ep.my_like ? "fill-red-400 text-red-400 scale-110" : ""}`} />
+            <Heart
+              className={`w-5 h-5 transition-all ${ep.my_like ? "fill-red-400 text-red-400 scale-110" : ""}`}
+            />
             {ep.my_like ? "J'aime ❤️" : "J'aime"}
             {(ep.likes?.length ?? 0) > 0 && (
               <span className="ml-1 text-sm opacity-70">{ep.likes!.length}</span>
@@ -157,42 +154,40 @@ function EpisodeDetail() {
       </div>
 
       <div className="max-w-4xl mx-auto px-4 sm:px-6 py-10 grid md:grid-cols-2 gap-6">
-        {COUPLE.map((role) => {
-          const review = reviewByRole(role);
-          const isMine = role === myRole;
-          const editable = isMine;
-          const partnerHidden = !seasonUnlocked && role === couplePartner;
+        <ReviewPanel
+          label={`${myRole ? ROLE_LABEL[myRole].emoji : "📝"} Ton compte rendu`}
+          review={myReview}
+          editable={Boolean(user)}
+          saving={saveReview.isPending}
+          onSave={async (draft) => {
+            const res = await saveReview.mutateAsync(draft);
+            toast.success("Compte rendu enregistré");
+            return res;
+          }}
+        />
+        {otherReviews.map((review) => {
+          const label = `${ROLE_LABEL[review.author_role].emoji} Le compte rendu de ${review.author_name}`;
 
-          if (partnerHidden) {
-            return (
-              <LockedReviewPanel
-                key={role}
-                label={`${ROLE_LABEL[role].emoji} Le compte rendu de ${ROLE_LABEL[role].label}`}
-              />
-            );
+          if (!seasonUnlocked) {
+            return <LockedReviewPanel key={review.id} label={label} />;
           }
 
           return (
             <ReviewPanel
-              key={role}
-              label={`${ROLE_LABEL[role].emoji} Le compte rendu de ${ROLE_LABEL[role].label}`}
+              key={review.id}
+              label={label}
               review={review}
-              editable={editable}
-              saving={saveReview.isPending}
-              onSave={async (draft) => {
-                const res = await saveReview.mutateAsync(draft);
-                toast.success("Compte rendu enregistré");
-                return res.review;
-              }}
+              editable={false}
+              saving={false}
+              onSave={async () => review}
             />
           );
         })}
       </div>
 
-      {myReview && !seasonUnlocked && couplePartner && (
+      {myReview && hasHiddenReviews && (
         <p className="max-w-4xl mx-auto px-4 sm:px-6 -mt-4 pb-6 text-center text-xs text-muted-foreground">
-          ✨ Tu as livré ton compte rendu. Celui de {ROLE_LABEL[couplePartner].label} sera révélé
-          à la fin de la saison.
+          ✨ Tu as livré ton compte rendu. Ceux des autres seront révélés à la fin de la saison.
         </p>
       )}
 
@@ -238,7 +233,6 @@ function EpisodeDetail() {
         }
       />
 
-
       <CommentsSection
         comments={commentsQuery.data?.comments ?? []}
         loading={commentsQuery.isLoading}
@@ -253,7 +247,7 @@ function EpisodeDetail() {
         onSubmit={async (draft) => {
           const res = await createComment.mutateAsync(draft);
           toast.success("Commentaire ajoute");
-          return res.comment;
+          return res;
         }}
       />
     </div>
@@ -275,12 +269,11 @@ function CommentsSection({
   saving: boolean;
   userId?: string;
   onReact: (commentId: string, emoji: string, kind: "add" | "remove") => void;
-  onSubmit: (draft: { author_name: string; body: string }) => Promise<EpisodeComment>;
+  onSubmit: (draft: EpisodeCommentDraft) => Promise<EpisodeComment>;
 }) {
-  const [name, setName] = useState("");
   const [body, setBody] = useState("");
 
-  const canSubmit = name.trim().length >= 2 && body.trim().length >= 2 && !saving;
+  const canSubmit = body.trim().length >= 2 && !saving;
 
   return (
     <section className="max-w-4xl mx-auto px-4 sm:px-6 pb-12">
@@ -291,10 +284,12 @@ function CommentsSection({
             event.preventDefault();
             if (!canSubmit) return;
             try {
-              await onSubmit({ author_name: name.trim(), body: body.trim() });
+              await onSubmit({ body: body.trim() });
               setBody("");
             } catch (err) {
-              toast.error(err instanceof Error ? err.message : "Impossible d'ajouter le commentaire.");
+              toast.error(
+                err instanceof Error ? err.message : "Impossible d'ajouter le commentaire.",
+              );
             }
           }}
         >
@@ -305,20 +300,6 @@ function CommentsSection({
           <h2 className="text-xl font-black tracking-tight">Vos reactions</h2>
 
           <label className="mt-4 block text-xs uppercase tracking-wider text-muted-foreground">
-            Prenom
-          </label>
-          <div className="mt-1 flex items-center gap-2 rounded-lg border border-border bg-input/50 px-3 py-2 focus-within:ring-2 focus-within:ring-primary">
-            <UserRound className="size-4 shrink-0 text-muted-foreground" />
-            <input
-              value={name}
-              onChange={(event) => setName(event.target.value)}
-              placeholder="Prenom"
-              maxLength={40}
-              className="min-w-0 flex-1 bg-transparent text-sm outline-none"
-            />
-          </div>
-
-          <label className="mt-3 block text-xs uppercase tracking-wider text-muted-foreground">
             Commentaire
           </label>
           <textarea
@@ -525,9 +506,20 @@ function MediaTile({ item }: { item: EpisodeMedia }) {
       title={item.filename}
     >
       {item.type === "video" ? (
-        <video src={item.url} className="h-full w-full object-cover" muted playsInline preload="metadata" />
+        <video
+          src={item.url}
+          className="h-full w-full object-cover"
+          muted
+          playsInline
+          preload="metadata"
+        />
       ) : item.type === "image" ? (
-        <img src={item.url} alt={item.filename} className="h-full w-full object-cover" loading="lazy" />
+        <img
+          src={item.url}
+          alt={item.filename}
+          className="h-full w-full object-cover"
+          loading="lazy"
+        />
       ) : (
         <div className="flex h-full w-full items-center justify-center text-muted-foreground">
           <Film className="size-7" />
@@ -657,7 +649,9 @@ function ReviewPanel({
         <Field label="Moment préféré">{displayedReview.favorite_moment}</Field>
         <Field label="Moment gênant">{displayedReview.awkward_moment}</Field>
         <Field label="Citation drôle">{displayedReview.funny_quote}</Field>
-        <Field label="Note de bas de page" large>{displayedReview.summary}</Field>
+        <Field label="Note de bas de page" large>
+          {displayedReview.summary}
+        </Field>
         <Field label="On le referait ?">
           {displayedReview.would_redo
             ? { yes: "✅ Oui clairement", no: "❌ Non merci", maybe: "🤷 Peut-être" }[

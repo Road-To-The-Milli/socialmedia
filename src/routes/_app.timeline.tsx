@@ -15,7 +15,7 @@ function Timeline() {
   const { user } = useAuth();
   const { data: episodes, isLoading } = useEpisodes();
   const createEpisode = useCreateEpisode();
-  const canCreateEpisode = user?.role === "samuel" || user?.role === "mathilde";
+  const canCreateEpisode = user?.role === "aventurier";
 
   if (isLoading) {
     return (
@@ -296,7 +296,11 @@ function EpisodeForm({
             <div className="relative min-h-28 overflow-hidden rounded-lg border border-border bg-muted/40">
               {imagePreviewUrl || coverUrl ? (
                 <>
-                  <img src={imagePreviewUrl || coverUrl} alt="" className="h-full min-h-28 w-full object-cover" />
+                  <img
+                    src={imagePreviewUrl || coverUrl}
+                    alt=""
+                    className="h-full min-h-28 w-full object-cover"
+                  />
                   <button
                     type="button"
                     onClick={clearImage}

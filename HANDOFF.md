@@ -1,5 +1,10 @@
 # Nous & Chill — Handoff Backend
 
+> ⚠️ **Obsolète** : ce document décrit l'ancien backend n8n + Airtable et le
+> login par code secret. L'app utilise désormais **Supabase** (DB, Auth
+> email/mot de passe, Storage) — voir `supabase/migrations/0001_init.sql` et
+> `src/lib/{supabase,auth,store}.ts*`. Conservé pour archive uniquement.
+
 Document à passer à Claude Code (ou à toi-même) pour câbler le frontend
 React/Lovable existant à un backend Airtable + n8n.
 

@@ -1,8 +1,7 @@
- import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { Clapperboard, KeyRound, Loader2 } from "lucide-react";
+import { Clapperboard, LogIn, Loader2 } from "lucide-react";
 import { useAuth } from "@/lib/auth";
-import { ApiError } from "@/lib/api";
 
 export const Route = createFileRoute("/login")({
   validateSearch: (s: Record<string, unknown>) => ({
@@ -14,10 +13,11 @@ export const Route = createFileRoute("/login")({
 type Status = "idle" | "submitting" | "error";
 
 function LoginPage() {
-  const { user, loginWithCode } = useAuth();
+  const { user, signIn } = useAuth();
   const nav = useNavigate();
   const search = Route.useSearch();
-  const [code, setCode] = useState("");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [status, setStatus] = useState<Status>("idle");
   const [error, setError] = useState<string | null>(null);
 
@@ -27,22 +27,16 @@ function LoginPage() {
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const cleanCode = code.trim();
-    if (!cleanCode) return;
+    if (!email.trim() || !password) return;
 
     setStatus("submitting");
     setError(null);
     try {
-      await loginWithCode(cleanCode);
+      await signIn(email, password);
       nav({ to: search.redirect || "/" });
     } catch (err) {
       setStatus("error");
-      if (err instanceof ApiError) {
-        const detail = err.code ? ` (${err.code})` : "";
-        setError(`${err.message}${detail}`);
-        return;
-      }
-      setError("Impossible de vérifier le code pour le moment.");
+      setError(err instanceof Error ? err.message : "Connexion impossible pour le moment.");
     }
   };
 
@@ -76,21 +70,29 @@ function LoginPage() {
           <form onSubmit={submit}>
             <div className="flex items-center gap-3 mb-2">
               <span className="inline-flex size-10 items-center justify-center rounded-lg bg-primary/10 text-primary">
-                <KeyRound className="size-5" />
+                <LogIn className="size-5" />
               </span>
-              <h2 className="text-xl font-bold">Qui regarde ?</h2>
+              <h2 className="text-xl font-bold">Connexion</h2>
             </div>
             <p className="text-sm text-muted-foreground mb-5">
-              Entre le code secret de ton groupe pour ouvrir la saison.
+              Connecte-toi avec ton email et ton mot de passe.
             </p>
             <input
-              type="password"
-              inputMode="text"
-              autoComplete="one-time-code"
+              type="email"
+              autoComplete="email"
               required
-              placeholder="Code secret"
-              value={code}
-              onChange={(e) => setCode(e.target.value)}
+              placeholder="Email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              className="w-full bg-input/50 border border-border rounded-lg px-4 py-3 mb-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+            />
+            <input
+              type="password"
+              autoComplete="current-password"
+              required
+              placeholder="Mot de passe"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
               className="w-full bg-input/50 border border-border rounded-lg px-4 py-3 mb-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
             />
             {status === "error" && error && (
@@ -98,20 +100,30 @@ function LoginPage() {
             )}
             <button
               type="submit"
-              disabled={!code.trim() || status === "submitting"}
+              disabled={!email.trim() || !password || status === "submitting"}
               className="w-full inline-flex items-center justify-center gap-2 bg-primary hover:bg-primary/90 disabled:opacity-30 disabled:cursor-not-allowed text-primary-foreground font-bold py-3 rounded-lg transition-all"
             >
               {status === "submitting" ? (
                 <>
-                  <Loader2 className="w-4 h-4 animate-spin" /> Vérification...
+                  <Loader2 className="w-4 h-4 animate-spin" /> Connexion...
                 </>
               ) : (
                 <>
-                  <KeyRound className="w-4 h-4" /> Entrer
+                  <LogIn className="w-4 h-4" /> Entrer
                 </>
               )}
             </button>
           </form>
+          <p className="text-center text-xs text-muted-foreground mt-4">
+            Pas encore de compte ?{" "}
+            <Link
+              to="/signup"
+              search={{ redirect: search.redirect }}
+              className="text-primary hover:underline"
+            >
+              Inscris-toi
+            </Link>
+          </p>
         </div>
 
         <p className="text-center text-xs text-muted-foreground mt-4">
