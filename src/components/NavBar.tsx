@@ -51,7 +51,7 @@ export function NavBar() {
           </span>
         </Link>
 
-        <nav className="flex items-center gap-1 overflow-x-auto scrollbar-hide">
+        <nav className="hidden md:flex items-center gap-1">
           {links.map(({ to, label, icon: Icon }) => (
             <Link
               key={to}

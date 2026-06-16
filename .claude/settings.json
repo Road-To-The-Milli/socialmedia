@@ -62,7 +62,8 @@
       "Bash(cat .mcp.json)",
       "Bash(find . -maxdepth 3 -iname \"*mcp*\")",
       "Bash(find / -path /proc -prune -o -ipath \"*supabase*mcp*\" -print 2>/dev/null | head -20)",
-      "Bash(find / -path /proc -prune -o -ipath \"*supabase-mcp*\" -print 2>/dev/null | grep -v \"/tmp/claude\" | head -30)"
+      "Bash(find / -path /proc -prune -o -ipath \"*supabase-mcp*\" -print 2>/dev/null | grep -v \"/tmp/claude\" | head -30)",
+      "Bash(ipconfig)"
     ]
   }
 }

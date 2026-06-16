@@ -1,0 +1,19 @@
+{
+  "name": "Nous & Chill",
+  "short_name": "N&C",
+  "description": "Le carnet de bord de notre aventure, entre amis.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#141414",
+  "theme_color": "#141414",
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ]
+}

@@ -74,7 +74,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
   head: () => ({
     meta: [
       { charSet: "utf-8" },
-      { name: "viewport", content: "width=device-width, initial-scale=1" },
+      { name: "viewport", content: "width=device-width, initial-scale=1, viewport-fit=cover" },
       { title: "Nous & Chill" },
       { name: "description", content: "Le carnet de bord de notre aventure, entre amis." },
       { name: "author", content: "Nous & Chill" },
@@ -82,6 +82,11 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { property: "og:description", content: "Le carnet de bord de notre aventure, entre amis." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
+      { name: "theme-color", content: "#141414" },
+      { name: "mobile-web-app-capable", content: "yes" },
+      { name: "apple-mobile-web-app-capable", content: "yes" },
+      { name: "apple-mobile-web-app-status-bar-style", content: "black-translucent" },
+      { name: "apple-mobile-web-app-title", content: "N&C" },
     ],
     links: [
       {
@@ -91,6 +96,14 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       {
         rel: "icon",
         type: "image/svg+xml",
+        href: "/favicon.svg",
+      },
+      {
+        rel: "manifest",
+        href: "/manifest.json",
+      },
+      {
+        rel: "apple-touch-icon",
         href: "/favicon.svg",
       },
     ],
