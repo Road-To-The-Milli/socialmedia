@@ -68,6 +68,9 @@
     "vite-tsconfig-paths": "^6.0.2",
     "zod": "^3.24.2"
   },
+  "optionalDependencies": {
+    "lightningcss-linux-arm64-gnu": "1.32.0"
+  },
   "devDependencies": {
     "@eslint/js": "^9.32.0",
     "@lovable.dev/vite-tanstack-config": "^0.0.1",
