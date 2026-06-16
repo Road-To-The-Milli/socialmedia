@@ -63,7 +63,10 @@
       "Bash(find . -maxdepth 3 -iname \"*mcp*\")",
       "Bash(find / -path /proc -prune -o -ipath \"*supabase*mcp*\" -print 2>/dev/null | head -20)",
       "Bash(find / -path /proc -prune -o -ipath \"*supabase-mcp*\" -print 2>/dev/null | grep -v \"/tmp/claude\" | head -30)",
-      "Bash(ipconfig)"
+      "Bash(ipconfig)",
+      "Bash(npm ls *)",
+      "Bash(python -c \"import sys,json; d=json.load\\(sys.stdin\\); print\\('deps:', list\\(d.get\\('dependencies',{}\\).items\\(\\)\\)\\); print\\('devDeps:', [k for k in d.get\\('devDependencies',{}\\).keys\\(\\)]\\)\")",
+      "Bash(Remove-Item -Recurse -Force node_modules, package-lock.json -ErrorAction SilentlyContinue)"
     ]
   }
 }
