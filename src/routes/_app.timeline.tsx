@@ -2,6 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useRef, useState } from "react";
 import { toast } from "sonner";
 import { Camera, Loader2, MapPin, Calendar, Music, NotebookPen, Upload, X } from "lucide-react";
+import { useActiveSpace } from "@/lib/space-context";
 import { useAuth } from "@/lib/auth";
 import { useCreateEpisode, useEpisodes } from "@/lib/store";
 import type { EpisodeDraft } from "@/lib/types";
@@ -12,9 +13,11 @@ export const Route = createFileRoute("/_app/timeline")({
 });
 
 function Timeline() {
+  const { activeSpaceId } = useActiveSpace();
   const { user } = useAuth();
-  const { data: episodes, isLoading } = useEpisodes();
-  const createEpisode = useCreateEpisode();
+  const { data: episodes, isLoading } = useEpisodes(activeSpaceId);
+  const createEpisode = useCreateEpisode(activeSpaceId);
+
   const canCreateEpisode = user?.role === "aventurier";
 
   if (isLoading) {
@@ -25,7 +28,7 @@ function Timeline() {
     );
   }
 
-  const sorted = [...(episodes ?? [])].sort((a, b) => +new Date(a.date) - +new Date(b.date));
+  const sorted = [...(episodes ?? [])].sort((a, b) => +new Date(b.date) - +new Date(a.date));
 
   return (
     <div className="max-w-4xl mx-auto px-4 sm:px-6 py-10">
@@ -83,7 +86,7 @@ function Timeline() {
                 <div className="p-4 sm:p-5 flex-1">
                   <div className="flex items-center gap-2 mb-1">
                     <span className="text-xs font-bold text-primary tracking-widest">
-                      S01·E{String(ep.number).padStart(2, "0")}
+                      E{String(ep.number).padStart(2, "0")}
                     </span>
                     {ep.duration && (
                       <span className="text-xs text-muted-foreground tabular-nums">
@@ -196,21 +199,12 @@ function EpisodeForm({
       notes: notes.trim() || undefined,
     });
 
-    setTitle("");
-    setDate("");
-    setPlace("");
-    setDuration("");
-    setCoverUrl("");
-    clearImage();
-    setNotes("");
-    setShowImageField(false);
+    setTitle(""); setDate(""); setPlace(""); setDuration(""); setCoverUrl("");
+    clearImage(); setNotes(""); setShowImageField(false);
   };
 
   return (
-    <form
-      onSubmit={submit}
-      className="mb-10 bg-card border border-border rounded-xl p-5 shadow-poster"
-    >
+    <form onSubmit={submit} className="mb-10 bg-card border border-border rounded-xl p-5 shadow-poster">
       <div className="flex items-start justify-between gap-4 mb-4">
         <div>
           <h2 className="text-lg font-bold">Ajouter une date</h2>
@@ -233,6 +227,7 @@ function EpisodeForm({
         <Input label="Lieu" value={place} onChange={setPlace} placeholder="Paris, Le Marais" />
         <Input label="Durée" value={duration} onChange={setDuration} placeholder="2h30" />
       </div>
+
       <div className="mt-4 rounded-xl border border-border bg-background/40 p-4">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
@@ -242,145 +237,76 @@ function EpisodeForm({
             </p>
           </div>
           <div className="flex flex-wrap gap-2">
-            <button
-              type="button"
-              onClick={() => galleryInputRef.current?.click()}
-              className="inline-flex items-center justify-center gap-2 rounded-md border border-border px-3 py-2 text-sm font-semibold hover:bg-muted"
-            >
-              <Upload className="size-4" />
-              Importer
+            <button type="button" onClick={() => galleryInputRef.current?.click()}
+              className="inline-flex items-center justify-center gap-2 rounded-md border border-border px-3 py-2 text-sm font-semibold hover:bg-muted">
+              <Upload className="size-4" /> Importer
             </button>
-            <button
-              type="button"
-              onClick={() => cameraInputRef.current?.click()}
-              className="inline-flex items-center justify-center gap-2 rounded-md bg-primary px-3 py-2 text-sm font-semibold text-primary-foreground hover:bg-primary/90"
-            >
-              <Camera className="size-4" />
-              Prendre une photo
+            <button type="button" onClick={() => cameraInputRef.current?.click()}
+              className="inline-flex items-center justify-center gap-2 rounded-md bg-primary px-3 py-2 text-sm font-semibold text-primary-foreground hover:bg-primary/90">
+              <Camera className="size-4" /> Prendre une photo
             </button>
-            <button
-              type="button"
-              onClick={() => setShowImageField(true)}
-              className="inline-flex items-center justify-center rounded-md border border-border px-3 py-2 text-sm font-semibold hover:bg-muted"
-            >
+            <button type="button" onClick={() => setShowImageField(true)}
+              className="inline-flex items-center justify-center rounded-md border border-border px-3 py-2 text-sm font-semibold hover:bg-muted">
               Coller un lien
             </button>
           </div>
         </div>
 
-        <input
-          ref={galleryInputRef}
-          type="file"
-          accept="image/*"
-          className="hidden"
-          onChange={(e) => handleImageFile(e.target.files?.[0])}
-        />
-        <input
-          ref={cameraInputRef}
-          type="file"
-          accept="image/*"
-          capture="environment"
-          className="hidden"
-          onChange={(e) => handleImageFile(e.target.files?.[0])}
-        />
+        <input ref={galleryInputRef} type="file" accept="image/*" className="hidden"
+          onChange={(e) => handleImageFile(e.target.files?.[0])} />
+        <input ref={cameraInputRef} type="file" accept="image/*" capture="environment" className="hidden"
+          onChange={(e) => handleImageFile(e.target.files?.[0])} />
 
         {(showImageField || imagePreviewUrl || coverUrl) && (
           <div className="mt-3 grid gap-3 md:grid-cols-[1fr_180px]">
-            <Input
-              label="Lien de l'image (optionnel)"
-              value={coverUrl}
-              onChange={setCoverUrl}
-              placeholder="https://... si tu préfères une URL"
-              type="url"
-            />
+            <Input label="Lien de l'image (optionnel)" value={coverUrl} onChange={setCoverUrl}
+              placeholder="https://..." type="url" />
             <div className="relative min-h-28 overflow-hidden rounded-lg border border-border bg-muted/40">
               {imagePreviewUrl || coverUrl ? (
                 <>
-                  <img
-                    src={imagePreviewUrl || coverUrl}
-                    alt=""
-                    className="h-full min-h-28 w-full object-cover"
-                  />
-                  <button
-                    type="button"
-                    onClick={clearImage}
-                    className="absolute right-2 top-2 inline-flex size-7 items-center justify-center rounded-full bg-background/80 text-foreground shadow"
-                    aria-label="Retirer l'image"
-                  >
+                  <img src={imagePreviewUrl || coverUrl} alt="" className="h-full min-h-28 w-full object-cover" />
+                  <button type="button" onClick={clearImage}
+                    className="absolute right-2 top-2 inline-flex size-7 items-center justify-center rounded-full bg-background/80 shadow">
                     <X className="size-4" />
                   </button>
                 </>
               ) : (
-                <div className="flex h-full min-h-28 items-center justify-center text-xs text-muted-foreground">
-                  Aperçu
-                </div>
+                <div className="flex h-full min-h-28 items-center justify-center text-xs text-muted-foreground">Aperçu</div>
               )}
             </div>
           </div>
         )}
       </div>
-      <Textarea
-        label="Description"
-        value={notes}
-        onChange={setNotes}
-        placeholder="Décris l'épisode, le contexte, les détails importants..."
-      />
+
+      <Textarea label="Description" value={notes} onChange={setNotes}
+        placeholder="Décris l'épisode, le contexte, les détails importants..." />
     </form>
   );
 }
 
-function Input({
-  label,
-  value,
-  onChange,
-  placeholder,
-  type = "text",
-}: {
-  label: string;
-  value: string;
-  onChange: (value: string) => void;
-  placeholder?: string;
-  type?: string;
+function Input({ label, value, onChange, placeholder, type = "text" }: {
+  label: string; value: string; onChange: (value: string) => void;
+  placeholder?: string; type?: string;
 }) {
   return (
     <label className="block">
-      <span className="block text-xs uppercase tracking-wider text-muted-foreground mb-1">
-        {label}
-      </span>
-      <input
-        type={type}
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
+      <span className="block text-xs uppercase tracking-wider text-muted-foreground mb-1">{label}</span>
+      <input type={type} value={value} onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder}
-        className="w-full bg-input/50 border border-border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
-      />
+        className="w-full bg-input/50 border border-border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary" />
     </label>
   );
 }
 
-function Textarea({
-  label,
-  value,
-  onChange,
-  placeholder,
-}: {
-  label: string;
-  value: string;
-  onChange: (value: string) => void;
-  placeholder?: string;
+function Textarea({ label, value, onChange, placeholder }: {
+  label: string; value: string; onChange: (value: string) => void; placeholder?: string;
 }) {
   return (
     <label className="mt-3 block">
-      <span className="mb-1 block text-xs uppercase tracking-wider text-muted-foreground">
-        {label}
-      </span>
-      <textarea
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        placeholder={placeholder}
-        rows={5}
-        className="w-full resize-y rounded-lg border border-border bg-input/50 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
-      />
+      <span className="mb-1 block text-xs uppercase tracking-wider text-muted-foreground">{label}</span>
+      <textarea value={value} onChange={(e) => onChange(e.target.value)}
+        placeholder={placeholder} rows={5}
+        className="w-full resize-y rounded-lg border border-border bg-input/50 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary" />
     </label>
   );
 }

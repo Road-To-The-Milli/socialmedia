@@ -1,30 +1,31 @@
 import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from "react";
+import type { Session } from "@supabase/supabase-js";
+import { toast } from "sonner";
 import { supabase } from "./supabase";
-import type { Role, User } from "./types";
+import type { User } from "./types";
 
-interface CreateAdventureParams {
-  mode: "create";
+interface SignUpParams {
   email: string;
   password: string;
   name: string;
+  /** Nom de l'aventure à créer une fois l'email confirmé. */
+  pendingAdventureName?: string;
+  /** Code d'invitation à utiliser une fois l'email confirmé. */
+  pendingInviteCode?: string;
 }
 
-interface JoinAdventureParams {
-  mode: "join";
-  email: string;
-  password: string;
-  name: string;
-  inviteCode: string;
+interface SignUpResult {
+  /** true si un email de confirmation a été envoyé (pas de session immédiate). */
+  emailConfirmationRequired: boolean;
 }
-
-type SignUpParams = CreateAdventureParams | JoinAdventureParams;
 
 interface AuthCtx {
   user: User | null;
   loading: boolean;
-  signUp: (params: SignUpParams) => Promise<void>;
+  signUp: (params: SignUpParams) => Promise<SignUpResult>;
   signIn: (email: string, password: string) => Promise<void>;
   signOut: () => Promise<void>;
+  refreshUser: () => Promise<void>;
 }
 
 const Ctx = createContext<AuthCtx | null>(null);
@@ -32,11 +33,55 @@ const Ctx = createContext<AuthCtx | null>(null);
 async function loadUser(authUserId: string, email: string | undefined): Promise<User | null> {
   const { data } = await supabase
     .from("profiles")
-    .select("id, name, role")
+    .select("id, name, avatar_url, bio, role, invite_code")
     .eq("id", authUserId)
     .maybeSingle();
   if (!data) return null;
-  return { id: data.id, name: data.name, role: data.role as Role, email };
+  return {
+    id: data.id,
+    name: data.name,
+    avatar_url: data.avatar_url ?? undefined,
+    bio: data.bio ?? undefined,
+    email,
+    role: (data.role as "aventurier" | "ami") ?? undefined,
+    invite_code: data.invite_code ?? undefined,
+  };
+}
+
+/**
+ * Si le compte a une aventure ou un code d'invitation "en attente" (posés au
+ * moment de l'inscription, avant la confirmation par email), on les applique
+ * ici, à la première session authentifiée. Le flag est ensuite nettoyé pour
+ * ne s'exécuter qu'une seule fois.
+ */
+async function applyPendingSpaceSetup(session: Session) {
+  const meta = session.user.user_metadata as Record<string, unknown>;
+  const adventureName =
+    typeof meta.pending_adventure_name === "string" ? meta.pending_adventure_name : undefined;
+  const inviteCode =
+    typeof meta.pending_invite_code === "string" ? meta.pending_invite_code : undefined;
+  if (!adventureName && !inviteCode) return;
+
+  try {
+    if (adventureName) {
+      const { error } = await supabase.rpc("become_aventurier");
+      if (error) throw error;
+    } else if (inviteCode) {
+      const { error } = await supabase.rpc("use_invite_code", { p_code: inviteCode });
+      if (error) throw error;
+    }
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    if (message.includes("invalid_invite_code")) {
+      toast.error("Le code d'invitation n'est plus valide.");
+    } else if (!message.includes("already_member")) {
+      toast.error("Impossible de finaliser la configuration de ton aventure.");
+    }
+  } finally {
+    await supabase.auth.updateUser({
+      data: { pending_adventure_name: null, pending_invite_code: null },
+    });
+  }
 }
 
 export function AuthProvider({ children }: { children: ReactNode }) {
@@ -48,6 +93,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     supabase.auth.getSession().then(async ({ data }) => {
       const session = data.session;
+      if (session) await applyPendingSpaceSetup(session);
       const profile = session ? await loadUser(session.user.id, session.user.email) : null;
       if (!active) return;
       setUser(profile);
@@ -55,6 +101,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     });
 
     const { data: listener } = supabase.auth.onAuthStateChange(async (_event, session) => {
+      if (session) await applyPendingSpaceSetup(session);
       const profile = session ? await loadUser(session.user.id, session.user.email) : null;
       if (!active) return;
       setUser(profile);
@@ -67,23 +114,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     };
   }, []);
 
-  const signUp = useCallback(async (params: SignUpParams) => {
-    const data: Record<string, string> =
-      params.mode === "create"
-        ? { mode: "create", name: params.name.trim() }
-        : {
-            mode: "join",
-            name: params.name.trim(),
-            invite_code: params.inviteCode.trim().toLowerCase(),
-          };
-
+  const signUp = useCallback(async ({
+    email,
+    password,
+    name,
+    pendingAdventureName,
+    pendingInviteCode,
+  }: SignUpParams): Promise<SignUpResult> => {
     const { data: signUpData, error } = await supabase.auth.signUp({
-      email: params.email.trim(),
-      password: params.password,
-      options: { data },
+      email: email.trim(),
+      password,
+      options: {
+        data: {
+          name: name.trim(),
+          ...(pendingAdventureName ? { pending_adventure_name: pendingAdventureName } : {}),
+          ...(pendingInviteCode ? { pending_invite_code: pendingInviteCode } : {}),
+        },
+        emailRedirectTo: `${window.location.origin}/auth/callback`,
+      },
     });
     if (error) throw error;
-    if (!signUpData.session) throw new Error("signup_no_session");
+    return { emailConfirmationRequired: !signUpData.session };
   }, []);
 
   const signIn = useCallback(async (email: string, password: string) => {
@@ -96,7 +147,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(null);
   }, []);
 
-  return <Ctx.Provider value={{ user, loading, signUp, signIn, signOut }}>{children}</Ctx.Provider>;
+  const refreshUser = useCallback(async () => {
+    const { data } = await supabase.auth.getSession();
+    const session = data.session;
+    const profile = session ? await loadUser(session.user.id, session.user.email) : null;
+    setUser(profile);
+  }, []);
+
+  return (
+    <Ctx.Provider value={{ user, loading, signUp, signIn, signOut, refreshUser }}>
+      {children}
+    </Ctx.Provider>
+  );
 }
 
 export function useAuth() {

@@ -1,18 +1,20 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { Play, Info, Flame, Loader2 } from "lucide-react";
 import { useAuth } from "@/lib/auth";
+import { useActiveSpaceId } from "@/lib/space-context";
 import { useEpisodes, useIdeas } from "@/lib/store";
 import { EpisodeCard } from "@/components/EpisodeCard";
 
 export const Route = createFileRoute("/_app/")({
-  head: () => ({ meta: [{ title: "Nous & Chill — Saison 1" }] }),
+  head: () => ({ meta: [{ title: "Nous & Chill" }] }),
   component: Dashboard,
 });
 
 function Dashboard() {
   const { user } = useAuth();
-  const episodesQuery = useEpisodes();
-  const ideasQuery = useIdeas();
+  const spaceId = useActiveSpaceId();
+  const episodesQuery = useEpisodes(spaceId);
+  const ideasQuery = useIdeas(spaceId);
 
   if (episodesQuery.isLoading) {
     return (
@@ -53,8 +55,8 @@ function Dashboard() {
               {featured.title}
             </h1>
             <p className="text-base sm:text-lg text-muted-foreground max-w-xl mb-6">
-              Le carnet de bord de notre aventure, épisode par épisode. {episodes.length} épisodes
-              au compteur. Spoilers garantis.
+              Le carnet de bord de votre aventure, épisode par épisode. {episodes.length} épisode
+              {episodes.length > 1 ? "s" : ""} au compteur.
             </p>
             <div className="flex flex-wrap gap-3">
               <Link
@@ -121,7 +123,6 @@ function Dashboard() {
           </div>
         )}
       </section>
-
     </div>
   );
 }

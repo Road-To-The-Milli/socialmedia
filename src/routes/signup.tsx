@@ -1,7 +1,8 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { Clapperboard, Compass, KeyRound, Loader2 } from "lucide-react";
+import { Clapperboard, Compass, KeyRound, Loader2, MailCheck } from "lucide-react";
 import { useAuth } from "@/lib/auth";
+import { supabase } from "@/lib/supabase";
 
 export const Route = createFileRoute("/signup")({
   validateSearch: (s: Record<string, unknown>) => ({
@@ -11,16 +12,12 @@ export const Route = createFileRoute("/signup")({
 });
 
 type View = "choice" | "create" | "join";
-type Status = "idle" | "submitting" | "error";
+type Status = "idle" | "submitting" | "error" | "sent";
 
 function errorMessage(err: unknown): string {
-  const message = err instanceof Error ? err.message : "";
-  if (message.includes("invalid_invite_code")) return "Code d'invitation invalide.";
-  if (message.includes("invite_code_already_used"))
-    return "Ce code d'invitation a déjà été utilisé.";
-  if (message.includes("invite_code_required")) return "Un code d'invitation est requis.";
-  if (message.includes("signup_no_session"))
-    return "Compte créé, mais aucune session n'a été ouverte. Vérifie que la confirmation par email est désactivée dans les paramètres Supabase (Authentication → Providers → Email).";
+  const message = err instanceof Error ? err.message : String(err);
+  if (message.includes("invalid_invite_code")) return "Code d'invitation invalide ou expiré.";
+  if (message.includes("already_member")) return "Tu es déjà membre de cette aventure.";
   return message || "Inscription impossible pour le moment.";
 }
 
@@ -199,6 +196,31 @@ function FormShell({
 const inputClass =
   "w-full bg-input/50 border border-border rounded-lg px-4 py-3 mb-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary";
 
+function SentView({ email, onBack }: { email: string; onBack: () => void }) {
+  return (
+    <div className="text-center">
+      <span className="inline-flex size-12 items-center justify-center rounded-full bg-primary/10 text-primary mb-4">
+        <MailCheck className="size-6" />
+      </span>
+      <h2 className="text-xl font-bold mb-2">Confirme ton adresse email</h2>
+      <p className="text-sm text-muted-foreground mb-1">
+        On a envoyé un lien de confirmation à <span className="text-foreground">{email}</span>.
+      </p>
+      <p className="text-sm text-muted-foreground mb-5">
+        Clique sur ce lien (vérifie aussi tes spams), puis connecte-toi pour rejoindre ton
+        aventure.
+      </p>
+      <button
+        type="button"
+        onClick={onBack}
+        className="w-full inline-flex items-center justify-center gap-2 bg-primary hover:bg-primary/90 text-primary-foreground font-bold py-3 rounded-lg transition-all"
+      >
+        ← Retour
+      </button>
+    </div>
+  );
+}
+
 function CreateForm({
   onBack,
   signUp,
@@ -207,12 +229,17 @@ function CreateForm({
   signUp: ReturnType<typeof useAuth>["signUp"];
 }) {
   const [name, setName] = useState("");
+  const [adventureName, setAdventureName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [status, setStatus] = useState<Status>("idle");
   const [error, setError] = useState<string | null>(null);
 
-  const canSubmit = name.trim().length >= 2 && email.trim().length > 0 && password.length >= 6;
+  const canSubmit =
+    name.trim().length >= 2 &&
+    adventureName.trim().length >= 2 &&
+    email.trim().length > 0 &&
+    password.length >= 6;
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -221,21 +248,36 @@ function CreateForm({
     setStatus("submitting");
     setError(null);
     try {
-      await signUp({ mode: "create", email, password, name });
+      const { emailConfirmationRequired } = await signUp({
+        email,
+        password,
+        name,
+        pendingAdventureName: adventureName.trim(),
+      });
+      if (emailConfirmationRequired) {
+        setStatus("sent");
+        return;
+      }
+      const { error: spaceError } = await supabase.rpc("become_aventurier");
+      if (spaceError) throw spaceError;
     } catch (err) {
       setStatus("error");
       setError(errorMessage(err));
     }
   };
 
+  if (status === "sent") {
+    return <SentView email={email} onBack={onBack} />;
+  }
+
   return (
     <FormShell
       icon={<Compass className="size-5" />}
-      title="Fonder l'aventure"
-      subtitle="Tu deviens aventurier : tu pourras créer des épisodes et inviter tes amis à te suivre."
+      title="Créer mon compte"
+      subtitle="Crée ton compte et donne un nom à votre aventure. Tu pourras inviter tes amis ensuite."
       onBack={onBack}
       onSubmit={submit}
-      submitLabel="Fonder cette aventure"
+      submitLabel="Créer mon compte"
       submittingLabel="Création..."
       canSubmit={canSubmit}
       status={status}
@@ -248,6 +290,15 @@ function CreateForm({
         placeholder="Prénom"
         value={name}
         onChange={(e) => setName(e.target.value)}
+        className={inputClass}
+      />
+      <input
+        type="text"
+        autoComplete="off"
+        required
+        placeholder="Nom de l'aventure (ex: Nous deux)"
+        value={adventureName}
+        onChange={(e) => setAdventureName(e.target.value)}
         className={inputClass}
       />
       <input
@@ -299,18 +350,33 @@ function JoinForm({
     setStatus("submitting");
     setError(null);
     try {
-      await signUp({ mode: "join", email, password, name, inviteCode });
+      const { emailConfirmationRequired } = await signUp({
+        email,
+        password,
+        name,
+        pendingInviteCode: inviteCode.trim(),
+      });
+      if (emailConfirmationRequired) {
+        setStatus("sent");
+        return;
+      }
+      const { error: joinError } = await supabase.rpc("use_invite_code", { p_code: inviteCode.trim() });
+      if (joinError) throw joinError;
     } catch (err) {
       setStatus("error");
       setError(errorMessage(err));
     }
   };
 
+  if (status === "sent") {
+    return <SentView email={email} onBack={onBack} />;
+  }
+
   return (
     <FormShell
       icon={<KeyRound className="size-5" />}
       title="Rejoindre l'aventure"
-      subtitle="Entre le code d'invitation que tu as reçu."
+      subtitle="Crée ton compte et entre le code d'invitation reçu pour rejoindre l'aventure."
       onBack={onBack}
       onSubmit={submit}
       submitLabel="Rejoindre cette aventure"

@@ -15,6 +15,7 @@ import { Route as AppRouteImport } from './routes/_app'
 import { Route as AppIndexRouteImport } from './routes/_app.index'
 import { Route as AuthCallbackRouteImport } from './routes/auth.callback'
 import { Route as AppTimelineRouteImport } from './routes/_app.timeline'
+import { Route as AppSettingsRouteImport } from './routes/_app.settings'
 import { Route as AppIdeasRouteImport } from './routes/_app.ideas'
 import { Route as AppEpisodeEpisodeIdRouteImport } from './routes/_app.episode.$episodeId'
 
@@ -47,6 +48,11 @@ const AppTimelineRoute = AppTimelineRouteImport.update({
   path: '/timeline',
   getParentRoute: () => AppRoute,
 } as any)
+const AppSettingsRoute = AppSettingsRouteImport.update({
+  id: '/settings',
+  path: '/settings',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppIdeasRoute = AppIdeasRouteImport.update({
   id: '/ideas',
   path: '/ideas',
@@ -63,6 +69,7 @@ export interface FileRoutesByFullPath {
   '/login': typeof LoginRoute
   '/signup': typeof SignupRoute
   '/ideas': typeof AppIdeasRoute
+  '/settings': typeof AppSettingsRoute
   '/timeline': typeof AppTimelineRoute
   '/auth/callback': typeof AuthCallbackRoute
   '/episode/$episodeId': typeof AppEpisodeEpisodeIdRoute
@@ -71,6 +78,7 @@ export interface FileRoutesByTo {
   '/login': typeof LoginRoute
   '/signup': typeof SignupRoute
   '/ideas': typeof AppIdeasRoute
+  '/settings': typeof AppSettingsRoute
   '/timeline': typeof AppTimelineRoute
   '/auth/callback': typeof AuthCallbackRoute
   '/': typeof AppIndexRoute
@@ -82,6 +90,7 @@ export interface FileRoutesById {
   '/login': typeof LoginRoute
   '/signup': typeof SignupRoute
   '/_app/ideas': typeof AppIdeasRoute
+  '/_app/settings': typeof AppSettingsRoute
   '/_app/timeline': typeof AppTimelineRoute
   '/auth/callback': typeof AuthCallbackRoute
   '/_app/': typeof AppIndexRoute
@@ -94,6 +103,7 @@ export interface FileRouteTypes {
     | '/login'
     | '/signup'
     | '/ideas'
+    | '/settings'
     | '/timeline'
     | '/auth/callback'
     | '/episode/$episodeId'
@@ -102,6 +112,7 @@ export interface FileRouteTypes {
     | '/login'
     | '/signup'
     | '/ideas'
+    | '/settings'
     | '/timeline'
     | '/auth/callback'
     | '/'
@@ -112,6 +123,7 @@ export interface FileRouteTypes {
     | '/login'
     | '/signup'
     | '/_app/ideas'
+    | '/_app/settings'
     | '/_app/timeline'
     | '/auth/callback'
     | '/_app/'
@@ -169,6 +181,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppTimelineRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/settings': {
+      id: '/_app/settings'
+      path: '/settings'
+      fullPath: '/settings'
+      preLoaderRoute: typeof AppSettingsRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/_app/ideas': {
       id: '/_app/ideas'
       path: '/ideas'
@@ -188,6 +207,7 @@ declare module '@tanstack/react-router' {
 
 interface AppRouteChildren {
   AppIdeasRoute: typeof AppIdeasRoute
+  AppSettingsRoute: typeof AppSettingsRoute
   AppTimelineRoute: typeof AppTimelineRoute
   AppIndexRoute: typeof AppIndexRoute
   AppEpisodeEpisodeIdRoute: typeof AppEpisodeEpisodeIdRoute
@@ -195,6 +215,7 @@ interface AppRouteChildren {
 
 const AppRouteChildren: AppRouteChildren = {
   AppIdeasRoute: AppIdeasRoute,
+  AppSettingsRoute: AppSettingsRoute,
   AppTimelineRoute: AppTimelineRoute,
   AppIndexRoute: AppIndexRoute,
   AppEpisodeEpisodeIdRoute: AppEpisodeEpisodeIdRoute,

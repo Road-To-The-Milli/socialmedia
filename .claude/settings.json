@@ -39,7 +39,30 @@
       "mcp__hetzner-coolify__coolify_list_databases",
       "mcp__hetzner-coolify__hetzner_list_servers",
       "mcp__hetzner-coolify__coolify_update_env",
-      "Bash(curl -s \"https://pfrvmcozeqkyjunmmcff.supabase.co/rest/v1/episodes?select=id\" -H \"apikey: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBmcnZtY296ZXFreWp1bm1tY2ZmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODEyODk2NzAsImV4cCI6MjA5Njg2NTY3MH0.rwG7yU8up2_cp7TD6G9etzvvpDgROVLWB9tG18_ZCBs\" -w \"\\\\nHTTP %{http_code}\\\\n\")"
+      "Bash(curl -s \"https://pfrvmcozeqkyjunmmcff.supabase.co/rest/v1/episodes?select=id\" -H \"apikey: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBmcnZtY296ZXFreWp1bm1tY2ZmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODEyODk2NzAsImV4cCI6MjA5Njg2NTY3MH0.rwG7yU8up2_cp7TD6G9etzvvpDgROVLWB9tG18_ZCBs\" -w \"\\\\nHTTP %{http_code}\\\\n\")",
+      "mcp__supabase__supabase_select",
+      "mcp__supabase__supabase_describe_table",
+      "Skill(run)",
+      "Skill(run:*)",
+      "Bash(ls .claude/skills)",
+      "Bash(grep -Hm1 '^description:' .claude/skills/*/SKILL.md)",
+      "Bash(npm run *)",
+      "Bash(disown)",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\\\\n\" http://localhost:8082/)",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\\\\n\" http://localhost:8080/)",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\\\\n\" http://localhost:8081/)",
+      "Bash(chromium-cli --help)",
+      "Read(//d//**)",
+      "Bash(curl -s -o /dev/null -w \"/ -> %{http_code}\\\\n\" http://localhost:8082/)",
+      "Bash(curl -s -o /dev/null -w \"/timeline -> %{http_code}\\\\n\" http://localhost:8082/timeline)",
+      "Bash(curl -s -o /dev/null -w \"/ideas -> %{http_code}\\\\n\" http://localhost:8082/ideas)",
+      "Bash(curl -s -o /dev/null -w \"/login -> %{http_code}\\\\n\" http://localhost:8082/login)",
+      "Bash(cat .env)",
+      "Bash(find . -maxdepth 2 -iname \"*.env*\")",
+      "Bash(cat .mcp.json)",
+      "Bash(find . -maxdepth 3 -iname \"*mcp*\")",
+      "Bash(find / -path /proc -prune -o -ipath \"*supabase*mcp*\" -print 2>/dev/null | head -20)",
+      "Bash(find / -path /proc -prune -o -ipath \"*supabase-mcp*\" -print 2>/dev/null | grep -v \"/tmp/claude\" | head -30)"
     ]
   }
 }
