@@ -1,4 +1,4 @@
-import { createFileRoute, Link, notFound } from "@tanstack/react-router";
+import { createFileRoute, Link, notFound, useNavigate } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
 import {
   ArrowLeft,
@@ -13,6 +13,7 @@ import {
   Music,
   Send,
   Star,
+  Trash2,
   Upload,
 } from "lucide-react";
 import { toast } from "sonner";
@@ -20,6 +21,7 @@ import { useAuth } from "@/lib/auth";
 import { useActiveSpaceId } from "@/lib/space-context";
 import {
   useCreateEpisodeComment,
+  useDeleteEpisode,
   useEpisodeComments,
   useEpisodeReviews,
   useEpisodes,
@@ -48,6 +50,7 @@ function EpisodeDetail() {
   const { episodeId } = Route.useParams();
   const { user } = useAuth();
   const spaceId = useActiveSpaceId();
+  const nav = useNavigate();
 
   const spaceQuery    = useSpace(spaceId);
   const episodesQuery = useEpisodes(spaceId);
@@ -57,6 +60,7 @@ function EpisodeDetail() {
   const createComment = useCreateEpisodeComment(spaceId, episodeId);
   const uploadMedia   = useUploadEpisodeMedia(spaceId, episodeId);
   const likeEpisode   = useLikeEpisode(spaceId);
+  const deleteEpisode = useDeleteEpisode(spaceId);
   const reactToComment = useReactToComment(spaceId, episodeId);
 
   if (episodesQuery.isLoading || reviewsQuery.isLoading) {
@@ -126,24 +130,43 @@ function EpisodeDetail() {
               </span>
             )}
           </div>
-          <button
-            onClick={() => likeEpisode.mutate(
-              { id: ep.id, kind: ep.my_like ? "clear" : "like" },
-              { onError: () => toast.error("Impossible de liker.") },
+          <div className="mt-4 flex flex-wrap gap-3">
+            <button
+              onClick={() => likeEpisode.mutate(
+                { id: ep.id, kind: ep.my_like ? "clear" : "like" },
+                { onError: () => toast.error("Impossible de liker.") },
+              )}
+              disabled={likeEpisode.isPending}
+              className={`inline-flex items-center gap-2 rounded-full border-2 px-5 py-2.5 font-bold text-base transition-all duration-200 ${
+                ep.my_like
+                  ? "border-red-400 bg-red-400/25 text-red-300 scale-105"
+                  : "border-white/30 bg-white/10 text-white hover:border-red-400 hover:bg-red-400/20 hover:text-red-300"
+              }`}
+            >
+              <Heart className={`w-5 h-5 transition-all ${ep.my_like ? "fill-red-400 text-red-400 scale-110" : ""}`} />
+              {ep.my_like ? "J'aime ❤️" : "J'aime"}
+              {(ep.likes?.length ?? 0) > 0 && (
+                <span className="ml-1 text-sm opacity-70">{ep.likes!.length}</span>
+              )}
+            </button>
+
+            {user?.role === "aventurier" && (
+              <button
+                onClick={() => {
+                  if (!confirm("Supprimer cet épisode définitivement ?")) return;
+                  deleteEpisode.mutate(ep.id, {
+                    onSuccess: () => { toast.success("Épisode supprimé"); nav({ to: "/timeline" }); },
+                    onError: (err) => toast.error(err instanceof Error ? err.message : "Suppression impossible."),
+                  });
+                }}
+                disabled={deleteEpisode.isPending}
+                className="inline-flex items-center gap-2 rounded-full border-2 border-white/30 bg-white/10 px-5 py-2.5 font-bold text-base text-white hover:border-red-500 hover:bg-red-500/20 hover:text-red-300 transition-all duration-200 disabled:opacity-40"
+              >
+                <Trash2 className="w-5 h-5" />
+                Supprimer
+              </button>
             )}
-            disabled={likeEpisode.isPending}
-            className={`mt-4 inline-flex items-center gap-2 rounded-full border-2 px-5 py-2.5 font-bold text-base transition-all duration-200 ${
-              ep.my_like
-                ? "border-red-400 bg-red-400/25 text-red-300 scale-105"
-                : "border-white/30 bg-white/10 text-white hover:border-red-400 hover:bg-red-400/20 hover:text-red-300"
-            }`}
-          >
-            <Heart className={`w-5 h-5 transition-all ${ep.my_like ? "fill-red-400 text-red-400 scale-110" : ""}`} />
-            {ep.my_like ? "J'aime ❤️" : "J'aime"}
-            {(ep.likes?.length ?? 0) > 0 && (
-              <span className="ml-1 text-sm opacity-70">{ep.likes!.length}</span>
-            )}
-          </button>
+          </div>
         </div>
       </div>
 
@@ -475,7 +498,7 @@ const empty: ReviewDraft = { rating: 0, favorite_moment: "", awkward_moment: "",
 
 function reviewToDraft(r?: Review): ReviewDraft {
   if (!r) return empty;
-  return { rating: r.rating, favorite_moment: r.favorite_moment, awkward_moment: r.awkward_moment, funny_quote: r.funny_quote, summary: r.summary, would_redo: r.would_redo, song: r.song };
+  return { rating: r.rating, favorite_moment: r.favorite_moment, awkward_moment: r.awkward_moment, funny_quote: "", summary: r.summary, would_redo: r.would_redo, song: r.song };
 }
 
 function ReviewPanel({ label, review, editable, saving, onSave }: {
@@ -521,7 +544,6 @@ function ReviewPanel({ label, review, editable, saving, onSave }: {
         <Stars value={displayedReview.rating} />
         <Field label="Moment préféré">{displayedReview.favorite_moment}</Field>
         <Field label="Moment gênant">{displayedReview.awkward_moment}</Field>
-        <Field label="Citation drôle">{displayedReview.funny_quote}</Field>
         <Field label="Note de bas de page" large>{displayedReview.summary}</Field>
         <Field label="On le referait ?">
           {displayedReview.would_redo
@@ -551,7 +573,7 @@ function ReviewPanel({ label, review, editable, saving, onSave }: {
       <Stars value={draft.rating} editable onChange={(v) => setDraft({ ...draft, rating: v })} />
       <Input label="Moment préféré" value={draft.favorite_moment} onChange={(v) => setDraft({ ...draft, favorite_moment: v })} />
       <Input label="Moment gênant" value={draft.awkward_moment} onChange={(v) => setDraft({ ...draft, awkward_moment: v })} />
-      <Input label="Citation drôle" value={draft.funny_quote} onChange={(v) => setDraft({ ...draft, funny_quote: v })} />
+
       <label className="block text-xs uppercase tracking-wider text-muted-foreground mb-1 mt-3">On le referait ?</label>
       <div className="flex gap-2 mb-3">
         {([ ["yes", "✅ Oui"], ["maybe", "🤷 Peut-être"], ["no", "❌ Non"] ] as const).map(([v, l]) => (

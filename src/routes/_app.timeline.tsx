@@ -48,12 +48,13 @@ function Timeline() {
           onCreate={(draft) =>
             createEpisode.mutate(draft, {
               onSuccess: () => toast.success("Date ajoutée à la saison"),
-              onError: (err) =>
-                toast.error(
+              onError: (err) => {
+                const msg =
                   err instanceof Error
                     ? err.message
-                    : "Impossible d'ajouter cette date pour le moment.",
-                ),
+                    : (err as { message?: string })?.message ?? JSON.stringify(err);
+                toast.error(msg);
+              },
             })
           }
         />
@@ -293,6 +294,7 @@ function Input({ label, value, onChange, placeholder, type = "text" }: {
       <span className="block text-xs uppercase tracking-wider text-muted-foreground mb-1">{label}</span>
       <input type={type} value={value} onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder}
+        lang={type === "date" ? "fr-FR" : undefined}
         className="w-full bg-input/50 border border-border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary" />
     </label>
   );

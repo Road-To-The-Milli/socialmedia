@@ -265,34 +265,33 @@ export function useSpaces(): UseQueryResult<Space[]> {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("spaces")
-        .select(`
-          *,
-          space_members!inner(role, user_id),
-          member_count:space_members(count)
-        `)
+        .select("*, space_members(role, user_id)")
         .order("created_at", { ascending: false });
       if (error) throw error;
-      return (data ?? []).map((row) => {
-        const myMembership = row.space_members?.find(
-          (m: { user_id: string; role: string }) => m.user_id === user?.id,
-        );
-        return {
-          id: row.id,
-          slug: row.slug,
-          name: row.name,
-          description: row.description ?? undefined,
-          cover_url: row.cover_url ?? undefined,
-          type: row.type,
-          season_start: row.season_start ?? undefined,
-          season_end: row.season_end ?? undefined,
-          season_unlocked: row.season_unlocked,
-          created_by: row.created_by,
-          created_at: row.created_at,
-          updated_at: row.updated_at,
-          my_role: myMembership?.role,
-          member_count: (row.member_count as { count: number }[])[0]?.count ?? 0,
-        } as Space;
-      });
+      return (data ?? [])
+        .map((row) => {
+          const myMembership = (row.space_members ?? []).find(
+            (m: { user_id: string; role: string }) => m.user_id === user?.id,
+          );
+          if (!myMembership) return null;
+          return {
+            id: row.id,
+            slug: row.slug,
+            name: row.name,
+            description: row.description ?? undefined,
+            cover_url: row.cover_url ?? undefined,
+            type: row.type,
+            season_start: row.season_start ?? undefined,
+            season_end: row.season_end ?? undefined,
+            season_unlocked: row.season_unlocked,
+            created_by: row.created_by,
+            created_at: row.created_at,
+            updated_at: row.updated_at,
+            my_role: myMembership.role,
+            member_count: (row.space_members ?? []).length,
+          } as Space;
+        })
+        .filter(Boolean) as Space[];
     },
   });
 }
@@ -497,6 +496,7 @@ export function useCreateEpisode(spaceId: string) {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (input: EpisodeDraft) => {
+      if (!spaceId) throw new Error("Aucun espace actif. Recharge la page.");
       const userId = await currentUserId();
 
       let coverUrl = input.cover_url ?? null;
@@ -531,10 +531,23 @@ export function useCreateEpisode(spaceId: string) {
           notes:     input.notes     ?? null,
           music_url: input.music_url ?? null,
         })
-        .select("*, episode_media(*), episode_likes(user_id)")
+        .select("id")
         .single();
       if (error) throw error;
       return data as EpisodeRow;
+    },
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: queryKeys.episodes(spaceId) });
+    },
+  });
+}
+
+export function useDeleteEpisode(spaceId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (episodeId: string) => {
+      const { error } = await supabase.from("episodes").delete().eq("id", episodeId);
+      if (error) throw error;
     },
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: queryKeys.episodes(spaceId) });
