@@ -4,6 +4,7 @@ import { useAuth } from "./auth";
 import { supabase } from "./supabase";
 import { sendPushNotification } from "./push";
 import type {
+  AppNotification,
   CreateInviteCodeDraft,
   CreateSpaceDraft,
   Episode,
@@ -41,6 +42,7 @@ export const queryKeys = {
   episodeComments:   (spaceId: string, epId: string) => ["spaces", spaceId, "episodes", epId, "comments"] as const,
   ideas:             (spaceId: string)           => ["spaces", spaceId, "ideas"]                     as const,
   synthese:          (spaceId: string)           => ["spaces", spaceId, "synthese"]                  as const,
+  notifications:     ()                          => ["notifications"]                                 as const,
 };
 
 // ============================================================
@@ -333,7 +335,7 @@ export function useSpace(spaceId: string | undefined): UseQueryResult<Space> {
   });
 }
 
-/** Crée un nouvel espace via la fonction RPC `create_space`. */
+/** Crée un nouvel espace via la fonction RPC `create_space` et génère un code d'invitation. */
 export function useCreateSpace() {
   const qc = useQueryClient();
   return useMutation({
@@ -347,7 +349,19 @@ export function useCreateSpace() {
         p_cover_url:    draft.cover_url    ?? null,
       });
       if (error) throw error;
-      return data as string;
+      const spaceId = data as string;
+
+      // Génère automatiquement un code d'invitation pour l'espace créé.
+      const userId = await currentUserId();
+      const code = Math.random().toString(36).slice(2, 10).toUpperCase();
+      await supabase.from("invite_codes").insert({
+        code,
+        space_id: spaceId,
+        role: "member",
+        created_by: userId,
+      });
+
+      return spaceId;
     },
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: queryKeys.spaces() });
@@ -895,6 +909,57 @@ export function useSynthese(spaceId: string | undefined): UseQueryResult<Synthes
         video_url: data.video_url ?? undefined,
         video_generated_at: data.video_generated_at ?? undefined,
       } as Synthese;
+    },
+  });
+}
+
+// ============================================================
+// NOTIFICATIONS
+// ============================================================
+
+export function useNotifications(): UseQueryResult<AppNotification[]> {
+  const { user } = useAuth();
+  return useQuery({
+    queryKey: queryKeys.notifications(),
+    enabled: Boolean(user),
+    staleTime: 0,
+    refetchInterval: 15 * 1000,
+    refetchOnMount: "always",
+    refetchOnWindowFocus: true,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("notifications")
+        .select("*")
+        .order("created_at", { ascending: false })
+        .limit(30);
+      if (error) throw error;
+      return (data ?? []).map((row) => ({
+        id: row.id,
+        space_id: row.space_id ?? undefined,
+        title: row.title,
+        body: row.body ?? undefined,
+        url: row.url ?? undefined,
+        read_at: row.read_at ?? undefined,
+        created_at: row.created_at,
+      })) as AppNotification[];
+    },
+  });
+}
+
+export function useMarkNotificationsRead() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (ids: string[]) => {
+      if (!ids.length) return;
+      const { error } = await supabase
+        .from("notifications")
+        .update({ read_at: new Date().toISOString() })
+        .in("id", ids)
+        .is("read_at", null);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: queryKeys.notifications() });
     },
   });
 }

@@ -1,7 +1,9 @@
 import { Link, useNavigate } from "@tanstack/react-router";
-import { Film, Heart, LogOut, Clapperboard, LogIn, Settings, ChevronDown } from "lucide-react";
-import { useEffect, useState } from "react";
+import { Bell, Film, Heart, LogOut, Clapperboard, LogIn, Settings, ChevronDown } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
 import { useAuth } from "@/lib/auth";
+import { useMarkNotificationsRead, useNotifications } from "@/lib/store";
+import { timeAgo } from "@/lib/utils";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   DropdownMenu,
@@ -11,6 +13,56 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+
+function NotificationBell() {
+  const nav = useNavigate();
+  const notificationsQuery = useNotifications();
+  const markRead = useMarkNotificationsRead();
+  const notifications = notificationsQuery.data ?? [];
+  const unread = useMemo(() => notifications.filter((n) => !n.read_at), [notifications]);
+
+  return (
+    <DropdownMenu
+      onOpenChange={(open) => {
+        if (open && unread.length) markRead.mutate(unread.map((n) => n.id));
+      }}
+    >
+      <DropdownMenuTrigger className="relative flex items-center justify-center size-9 rounded-md text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors outline-none shrink-0">
+        <Bell className="size-5" />
+        {unread.length > 0 && (
+          <span className="absolute top-1 right-1 inline-flex items-center justify-center size-4 rounded-full bg-primary text-[10px] font-bold text-primary-foreground leading-none">
+            {unread.length > 9 ? "9+" : unread.length}
+          </span>
+        )}
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end" className="w-80 max-h-96 overflow-y-auto">
+        <DropdownMenuLabel>Notifications</DropdownMenuLabel>
+        <DropdownMenuSeparator />
+        {notifications.length === 0 ? (
+          <p className="px-2 py-6 text-sm text-muted-foreground text-center">
+            Aucune notification pour l'instant.
+          </p>
+        ) : (
+          notifications.map((n) => (
+            <DropdownMenuItem
+              key={n.id}
+              className="cursor-pointer flex flex-col items-start gap-0.5 whitespace-normal py-2"
+              onClick={() => {
+                if (n.url) nav({ to: n.url as never });
+              }}
+            >
+              <span className="text-sm font-medium leading-snug">{n.title}</span>
+              {n.body && (
+                <span className="text-xs text-muted-foreground line-clamp-2">{n.body}</span>
+              )}
+              <span className="text-[10px] text-muted-foreground">{timeAgo(n.created_at)}</span>
+            </DropdownMenuItem>
+          ))
+        )}
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+}
 
 const links = [
   { to: "/", label: "Accueil", icon: Film },
@@ -67,6 +119,8 @@ export function NavBar() {
         </nav>
 
         {user ? (
+          <div className="flex items-center gap-1 shrink-0">
+          <NotificationBell />
           <DropdownMenu>
             <DropdownMenuTrigger className="flex items-center gap-2 rounded-md px-2 py-1.5 text-sm text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors outline-none shrink-0">
               <Avatar className="h-7 w-7">
@@ -102,6 +156,7 @@ export function NavBar() {
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
+          </div>
         ) : (
           <Link
             to="/login"

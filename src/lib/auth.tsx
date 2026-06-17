@@ -4,6 +4,13 @@ import { toast } from "sonner";
 import { supabase } from "./supabase";
 import type { User } from "./types";
 
+export const OAUTH_PENDING_KEY = "oauth_pending_setup";
+
+export interface OAuthPending {
+  pendingAdventureName?: string;
+  pendingInviteCode?: string;
+}
+
 interface SignUpParams {
   email: string;
   password: string;
@@ -24,6 +31,7 @@ interface AuthCtx {
   loading: boolean;
   signUp: (params: SignUpParams) => Promise<SignUpResult>;
   signIn: (email: string, password: string) => Promise<void>;
+  signInWithOAuth: (provider: "google" | "apple", pending?: OAuthPending) => Promise<void>;
   signOut: () => Promise<void>;
   refreshUser: () => Promise<void>;
 }
@@ -142,6 +150,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (error) throw error;
   }, []);
 
+  const signInWithOAuth = useCallback(async (
+    provider: "google" | "apple",
+    pending?: OAuthPending,
+  ) => {
+    if (pending?.pendingAdventureName || pending?.pendingInviteCode) {
+      localStorage.setItem(OAUTH_PENDING_KEY, JSON.stringify(pending));
+    }
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider,
+      options: { redirectTo: `${window.location.origin}/auth/callback` },
+    });
+    if (error) {
+      localStorage.removeItem(OAUTH_PENDING_KEY);
+      throw error;
+    }
+  }, []);
+
   const signOut = useCallback(async () => {
     await supabase.auth.signOut();
     setUser(null);
@@ -155,7 +180,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   return (
-    <Ctx.Provider value={{ user, loading, signUp, signIn, signOut, refreshUser }}>
+    <Ctx.Provider value={{ user, loading, signUp, signIn, signInWithOAuth, signOut, refreshUser }}>
       {children}
     </Ctx.Provider>
   );

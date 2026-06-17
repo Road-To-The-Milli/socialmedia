@@ -48,7 +48,7 @@ export async function subscribePush(): Promise<PushSubscription> {
 
   return reg.pushManager.subscribe({
     userVisibleOnly: true,
-    applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY),
+    applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY).buffer as ArrayBuffer,
   });
 }
 
@@ -80,7 +80,11 @@ export async function deleteSubscriptionFromSupabase(sub: PushSubscription, user
   if (error) throw error;
 }
 
-/** Appelle l'Edge Function pour envoyer une notification à tous les membres d'un space sauf l'expéditeur. */
+/**
+ * Notifie tous les membres d'un space sauf l'expéditeur :
+ * - crée une notification in-app (table `notifications`, lue via la cloche)
+ * - déclenche en plus une notification push web si l'appareil y est abonné
+ */
 export async function sendPushNotification(payload: {
   space_id: string;
   sender_id: string;
@@ -89,6 +93,16 @@ export async function sendPushNotification(payload: {
   url?: string;
   tag?: string;
 }): Promise<void> {
+  try {
+    await supabase.rpc("notify_space", {
+      p_space_id: payload.space_id,
+      p_title: payload.title,
+      p_body: payload.body,
+      p_url: payload.url ?? null,
+    });
+  } catch {
+    // Notifs non critiques — on ignore les erreurs silencieusement
+  }
   try {
     await supabase.functions.invoke("send-push", { body: payload });
   } catch {

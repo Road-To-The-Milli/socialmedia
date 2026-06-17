@@ -3,8 +3,7 @@ import { useRef, useState } from "react";
 import { toast } from "sonner";
 import { Camera, Loader2, MapPin, Calendar, Music, NotebookPen, Upload, X } from "lucide-react";
 import { useActiveSpace } from "@/lib/space-context";
-import { useAuth } from "@/lib/auth";
-import { useCreateEpisode, useEpisodes } from "@/lib/store";
+import { useCreateEpisode, useEpisodes, useSpace } from "@/lib/store";
 import type { EpisodeDraft } from "@/lib/types";
 
 export const Route = createFileRoute("/_app/timeline")({
@@ -14,11 +13,13 @@ export const Route = createFileRoute("/_app/timeline")({
 
 function Timeline() {
   const { activeSpaceId } = useActiveSpace();
-  const { user } = useAuth();
+  const spaceQuery = useSpace(activeSpaceId);
   const { data: episodes, isLoading } = useEpisodes(activeSpaceId);
   const createEpisode = useCreateEpisode(activeSpaceId);
 
-  const canCreateEpisode = user?.role === "aventurier";
+  // Seul le créateur de l'aventure ("mes aventures") peut créer des épisodes.
+  // Les amis qui rejoignent une aventure via un code ne sont là que pour suivre.
+  const canCreateEpisode = spaceQuery.data?.my_role === "owner";
 
   if (isLoading) {
     return (

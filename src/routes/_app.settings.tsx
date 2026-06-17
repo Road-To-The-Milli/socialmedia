@@ -1,9 +1,11 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
-import { Bell, BellOff, Copy, Loader2, Settings, User as UserIcon } from "lucide-react";
+import { Bell, BellOff, Copy, Link2, Loader2, Settings, User as UserIcon } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "@/lib/auth";
-import { useUpdateProfile } from "@/lib/store";
+import { useActiveSpaceId } from "@/lib/space-context";
+import { supabase } from "@/lib/supabase";
+import { useCreateInviteCode, useSpaceInviteCodes, useUpdateProfile } from "@/lib/store";
 import { usePush } from "@/hooks/use-push";
 
 export const Route = createFileRoute("/_app/settings")({
@@ -15,6 +17,9 @@ function SettingsPage() {
   const { user, refreshUser } = useAuth();
   const updateProfile = useUpdateProfile();
   const push = usePush();
+  const spaceId = useActiveSpaceId();
+  const inviteCodesQuery = useSpaceInviteCodes(spaceId || undefined);
+  const createInviteCode = useCreateInviteCode(spaceId);
 
   const [name, setName] = useState(user?.name ?? "");
   const [bio, setBio] = useState(user?.bio ?? "");
@@ -124,6 +129,8 @@ function SettingsPage() {
         </button>
       </form>
 
+
+
       <div className="mt-6 bg-card border border-border rounded-xl p-5 sm:p-6 shadow-poster">
         <h2 className="text-base font-bold mb-1">Notifications</h2>
         <p className="text-sm text-muted-foreground mb-4">
@@ -178,28 +185,65 @@ function SettingsPage() {
         )}
       </div>
 
-      {user.role === "aventurier" && user.invite_code && (
+      {spaceId && (
         <div className="mt-6 bg-card border border-border rounded-xl p-5 sm:p-6 shadow-poster">
           <h2 className="text-base font-bold mb-1">Code d'invitation</h2>
           <p className="text-sm text-muted-foreground mb-4">
-            Partage ce code à tes viewers pour qu'ils puissent créer un compte.
+            Partage ce code pour inviter quelqu'un à rejoindre ce space. Il fonctionne aussi à
+            l'inscription.
           </p>
-          <div className="flex items-center gap-3">
-            <div className="flex-1 bg-input/50 border border-border rounded-lg px-4 py-3 font-mono text-lg font-bold tracking-[0.2em] text-primary select-all">
-              {user.invite_code}
+
+          {/* Code actif (dernier généré) */}
+          {inviteCodesQuery.data && inviteCodesQuery.data.length > 0 ? (
+            <div className="flex items-center gap-3 mb-4">
+              <div className="flex-1 bg-input/50 border border-border rounded-lg px-4 py-3 font-mono text-lg font-bold tracking-[0.2em] text-primary select-all">
+                {inviteCodesQuery.data[0].code}
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  navigator.clipboard.writeText(inviteCodesQuery.data![0].code);
+                  toast.success("Code copié !");
+                }}
+                className="shrink-0 inline-flex items-center gap-2 bg-secondary hover:bg-secondary/80 px-4 py-3 rounded-lg text-sm font-semibold transition"
+              >
+                <Copy className="size-4" /> Copier
+              </button>
             </div>
-            <button
-              type="button"
-              onClick={() => {
-                navigator.clipboard.writeText(user.invite_code!);
-                toast.success("Code copié !");
-              }}
-              className="shrink-0 inline-flex items-center gap-2 bg-secondary hover:bg-secondary/80 px-4 py-3 rounded-lg text-sm font-semibold transition"
-            >
-              <Copy className="size-4" />
-              Copier
-            </button>
-          </div>
+          ) : (
+            <p className="text-sm text-muted-foreground mb-4 italic">
+              Aucun code généré pour ce space.
+            </p>
+          )}
+
+          <button
+            type="button"
+            disabled={createInviteCode.isPending}
+            onClick={() =>
+              createInviteCode.mutate(
+                { role: "member" },
+                {
+                  onSuccess: async (newCode) => {
+                    // Synchronise profiles.invite_code avec le nouveau code du space
+                    await supabase
+                      .from("profiles")
+                      .update({ invite_code: newCode.code })
+                      .eq("id", user.id);
+                    await refreshUser();
+                    toast.success("Nouveau code généré !");
+                  },
+                },
+              )
+            }
+            className="inline-flex items-center gap-2 bg-secondary hover:bg-secondary/80 px-4 py-2 rounded-md text-sm font-semibold transition disabled:opacity-40"
+          >
+            {createInviteCode.isPending ? (
+              <Loader2 className="size-4 animate-spin" />
+            ) : (
+              <Link2 className="size-4" />
+            )}
+            {inviteCodesQuery.data?.length ? "Générer un nouveau code" : "Générer un code"}
+          </button>
         </div>
       )}
     </div>

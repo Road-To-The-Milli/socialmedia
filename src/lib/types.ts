@@ -210,6 +210,20 @@ export interface Idea {
 }
 
 // ============================================================
+// NOTIFICATIONS
+// ============================================================
+
+export interface AppNotification {
+  id: string;
+  space_id?: string;
+  title: string;
+  body?: string;
+  url?: string;
+  read_at?: string;
+  created_at: string;
+}
+
+// ============================================================
 // SYNTHESE (bilan de fin de saison)
 // ============================================================
 

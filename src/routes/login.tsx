@@ -2,6 +2,7 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { Clapperboard, LogIn, Loader2 } from "lucide-react";
 import { useAuth } from "@/lib/auth";
+import { OAuthButtons } from "@/components/OAuthButtons";
 
 export const Route = createFileRoute("/login")({
   validateSearch: (s: Record<string, unknown>) => ({
@@ -13,7 +14,7 @@ export const Route = createFileRoute("/login")({
 type Status = "idle" | "submitting" | "error";
 
 function LoginPage() {
-  const { user, signIn } = useAuth();
+  const { user, signIn, signInWithOAuth } = useAuth();
   const nav = useNavigate();
   const search = Route.useSearch();
   const [email, setEmail] = useState("");
@@ -114,6 +115,7 @@ function LoginPage() {
               )}
             </button>
           </form>
+          <OAuthButtons onOAuth={(p) => signInWithOAuth(p)} />
           <p className="text-center text-xs text-muted-foreground mt-4">
             Pas encore de compte ?{" "}
             <Link

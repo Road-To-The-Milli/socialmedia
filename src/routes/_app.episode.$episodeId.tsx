@@ -150,7 +150,7 @@ function EpisodeDetail() {
               )}
             </button>
 
-            {user?.role === "aventurier" && (
+            {myRole === "owner" && (
               <button
                 onClick={() => {
                   if (!confirm("Supprimer cet épisode définitivement ?")) return;
