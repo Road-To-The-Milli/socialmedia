@@ -1,9 +1,10 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
-import { Copy, Loader2, Settings, User as UserIcon } from "lucide-react";
+import { Bell, BellOff, Copy, Loader2, Settings, User as UserIcon } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "@/lib/auth";
 import { useUpdateProfile } from "@/lib/store";
+import { usePush } from "@/hooks/use-push";
 
 export const Route = createFileRoute("/_app/settings")({
   head: () => ({ meta: [{ title: "Paramètres · Nous & Chill" }] }),
@@ -13,6 +14,7 @@ export const Route = createFileRoute("/_app/settings")({
 function SettingsPage() {
   const { user, refreshUser } = useAuth();
   const updateProfile = useUpdateProfile();
+  const push = usePush();
 
   const [name, setName] = useState(user?.name ?? "");
   const [bio, setBio] = useState(user?.bio ?? "");
@@ -121,6 +123,60 @@ function SettingsPage() {
           {updateProfile.isPending ? "Enregistrement..." : "Enregistrer"}
         </button>
       </form>
+
+      <div className="mt-6 bg-card border border-border rounded-xl p-5 sm:p-6 shadow-poster">
+        <h2 className="text-base font-bold mb-1">Notifications</h2>
+        <p className="text-sm text-muted-foreground mb-4">
+          Reçois une notification push quand un épisode, un commentaire ou une idée est ajouté.
+        </p>
+
+        {push.state === "unsupported" && (
+          <p className="text-sm text-muted-foreground">
+            Ton navigateur ne supporte pas les notifications push.
+          </p>
+        )}
+
+        {push.state === "denied" && (
+          <p className="text-sm text-destructive">
+            Les notifications sont bloquées dans ton navigateur. Autorise-les dans les paramètres du site.
+          </p>
+        )}
+
+        {(push.state === "subscribed" || push.state === "unsubscribed") && (
+          <button
+            type="button"
+            disabled={false}
+            onClick={async () => {
+              try {
+                if (push.state === "subscribed") {
+                  await push.unsubscribe();
+                  toast.success("Notifications désactivées");
+                } else {
+                  await push.subscribe();
+                  toast.success("Notifications activées !");
+                }
+              } catch {
+                toast.error("Impossible de modifier les notifications.");
+              }
+            }}
+            className={`inline-flex items-center gap-2 px-4 py-2 rounded-md text-sm font-semibold transition ${
+              push.state === "subscribed"
+                ? "bg-secondary hover:bg-secondary/80 text-foreground"
+                : "bg-primary hover:bg-primary/90 text-primary-foreground"
+            }`}
+          >
+            {push.state === "subscribed" ? (
+              <><BellOff className="size-4" /> Désactiver les notifications</>
+            ) : (
+              <><Bell className="size-4" /> Activer les notifications</>
+            )}
+          </button>
+        )}
+
+        {push.state === "loading" && (
+          <Loader2 className="size-5 animate-spin text-muted-foreground" />
+        )}
+      </div>
 
       {user.role === "aventurier" && user.invite_code && (
         <div className="mt-6 bg-card border border-border rounded-xl p-5 sm:p-6 shadow-poster">

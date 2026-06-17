@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient, type UseQueryResult } from "@tan
 import type { ReactNode } from "react";
 import { useAuth } from "./auth";
 import { supabase } from "./supabase";
+import { sendPushNotification } from "./push";
 import type {
   CreateInviteCodeDraft,
   CreateSpaceDraft,
@@ -536,8 +537,18 @@ export function useCreateEpisode(spaceId: string) {
       if (error) throw error;
       return data as EpisodeRow;
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
       void qc.invalidateQueries({ queryKey: queryKeys.episodes(spaceId) });
+      void currentUserId().then((uid) =>
+        sendPushNotification({
+          space_id: spaceId,
+          sender_id: uid,
+          title: "Nouvel épisode ajouté !",
+          body: `Épisode "${data.title}" vient d'être créé.`,
+          url: `/episode/${data.id}`,
+          tag: `episode-${data.id}`,
+        }),
+      );
     },
   });
 }
@@ -723,8 +734,16 @@ export function useCreateEpisodeComment(spaceId: string, episodeId: string) {
       if (error) throw error;
       return mapCommentRow(data);
     },
-    onSuccess: () => {
+    onSuccess: (comment) => {
       void qc.invalidateQueries({ queryKey: queryKeys.episodeComments(spaceId, episodeId) });
+      void sendPushNotification({
+        space_id: spaceId,
+        sender_id: comment.author_id,
+        title: `${comment.author_name} a commenté`,
+        body: comment.body.slice(0, 100),
+        url: `/episode/${episodeId}`,
+        tag: `comment-${episodeId}`,
+      });
     },
   });
 }
@@ -796,9 +815,18 @@ export function useCreateIdea(spaceId: string) {
         proposed_by: userId,
       });
       if (error) throw error;
+      return { userId, title: input.title };
     },
-    onSuccess: () => {
+    onSuccess: ({ userId, title }) => {
       void qc.invalidateQueries({ queryKey: queryKeys.ideas(spaceId) });
+      void sendPushNotification({
+        space_id: spaceId,
+        sender_id: userId,
+        title: "Nouvelle idée proposée !",
+        body: title,
+        url: "/ideas",
+        tag: `idea-${spaceId}`,
+      });
     },
   });
 }
