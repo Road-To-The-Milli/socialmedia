@@ -15,7 +15,7 @@ import {
 import { useState } from "react";
 import { toast } from "sonner";
 import { useAuth } from "@/lib/auth";
-import { useActiveSpace, useActiveSpaceId } from "@/lib/space-context";
+import { useActiveSpaceId } from "@/lib/space-context";
 import { useCreateSpace, useEpisodes, useIdeas, useJoinSpace, useSpaces } from "@/lib/store";
 import type { Space } from "@/lib/types";
 import { EpisodeCard } from "@/components/EpisodeCard";
@@ -298,33 +298,18 @@ function JoinBanner() {
 // Aperçu des aventures : "Mes aventures" / "Aventures amis"
 // ──────────────────────────────────────────────
 
-function AdventureCard({
-  space,
-  active,
-}: {
-  space: Space;
-  active: boolean;
-}) {
+function AdventureCard({ space }: { space: Space }) {
   return (
     <Link
       to="/adventure/$spaceId"
       params={{ spaceId: space.id }}
-      className={`relative shrink-0 w-52 rounded-xl overflow-hidden border text-left transition snap-start ${
-        active
-          ? "border-primary ring-2 ring-primary"
-          : "border-border hover:border-primary"
-      }`}
+      className="relative shrink-0 w-52 rounded-xl overflow-hidden border border-border text-left transition snap-start hover:border-primary"
     >
       <div className="h-24 w-full bg-secondary relative">
         {space.cover_url ? (
           <img src={space.cover_url} alt="" className="absolute inset-0 w-full h-full object-cover" />
         ) : (
           <div className="absolute inset-0 flex items-center justify-center text-3xl">🎬</div>
-        )}
-        {active && (
-          <span className="absolute top-2 right-2 bg-primary text-primary-foreground text-[10px] font-bold px-2 py-0.5 rounded-full">
-            Actif
-          </span>
         )}
       </div>
       <div className="p-3 bg-card">
@@ -340,7 +325,6 @@ function AdventureCard({
 type AdventureTab = "mine" | "friends";
 
 function AdventuresOverview({ spaces }: { spaces: Space[] }) {
-  const { activeSpaceId } = useActiveSpace();
   const mine = spaces.filter((s) => s.my_role === "owner");
   const friends = spaces.filter((s) => s.my_role !== "owner");
 
@@ -381,7 +365,7 @@ function AdventuresOverview({ spaces }: { spaces: Space[] }) {
 
       <div className="flex gap-4 overflow-x-auto scrollbar-hide pb-2 snap-x">
         {shown.map((s) => (
-          <AdventureCard key={s.id} space={s} active={s.id === activeSpaceId} />
+          <AdventureCard key={s.id} space={s} />
         ))}
       </div>
     </div>
