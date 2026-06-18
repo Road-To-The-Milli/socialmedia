@@ -1,16 +1,17 @@
 import { createFileRoute, Link, notFound } from "@tanstack/react-router";
 import {
+  ArrowDown,
   ArrowLeft,
+  ArrowUp,
   Calendar,
   Loader2,
   MapPin,
   Music,
   NotebookPen,
   Plus,
-  Star,
-  Trash2,
   User as UserIcon,
   Users,
+  X,
 } from "lucide-react";
 import { toast } from "sonner";
 import { useActiveSpace } from "@/lib/space-context";
@@ -210,6 +211,8 @@ function AdventureDetail() {
                       {member.role === "member" && (
                         <button
                           type="button"
+                          title={member.can_create_episodes ? "Rétrograder" : "Promouvoir"}
+                          aria-label={member.can_create_episodes ? "Rétrograder" : "Promouvoir"}
                           disabled={setMemberEpisodePermission.isPending}
                           onClick={() =>
                             setMemberEpisodePermission.mutate(
@@ -231,18 +234,26 @@ function AdventureDetail() {
                               },
                             )
                           }
-                          className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-semibold transition disabled:opacity-40 ${
+                          className={`inline-flex size-9 sm:w-auto sm:h-auto items-center justify-center gap-1.5 rounded-full sm:rounded-md sm:px-3 sm:py-1.5 transition disabled:opacity-40 ${
                             member.can_create_episodes
                               ? "bg-secondary hover:bg-secondary/80 text-foreground"
-                              : "bg-primary hover:bg-primary/90 text-primary-foreground"
+                              : "bg-emerald-500 hover:bg-emerald-600 text-white"
                           }`}
                         >
-                          <Star className="size-3.5" />
-                          {member.can_create_episodes ? "Rétrograder" : "Promouvoir"}
+                          {member.can_create_episodes ? (
+                            <ArrowDown className="size-4" />
+                          ) : (
+                            <ArrowUp className="size-4" />
+                          )}
+                          <span className="hidden sm:inline text-xs font-semibold">
+                            {member.can_create_episodes ? "Rétrograder" : "Promouvoir"}
+                          </span>
                         </button>
                       )}
                       <button
                         type="button"
+                        title="Retirer"
+                        aria-label="Retirer"
                         disabled={removeMember.isPending}
                         onClick={() => {
                           if (
@@ -259,9 +270,10 @@ function AdventureDetail() {
                               ),
                           });
                         }}
-                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-semibold bg-destructive/10 text-destructive hover:bg-destructive/20 transition disabled:opacity-40"
+                        className="inline-flex size-9 sm:w-auto sm:h-auto items-center justify-center gap-1.5 rounded-full sm:rounded-md sm:px-3 sm:py-1.5 border-2 sm:border border-destructive text-destructive hover:bg-destructive/10 transition disabled:opacity-40"
                       >
-                        <Trash2 className="size-3.5" /> Retirer
+                        <X className="size-4" />
+                        <span className="hidden sm:inline text-xs font-semibold">Retirer</span>
                       </button>
                     </div>
                   </li>
