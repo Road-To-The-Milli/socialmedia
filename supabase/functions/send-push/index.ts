@@ -11,21 +11,30 @@ webpush.setVapidDetails(VAPID_SUBJECT, VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY);
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
+// Le client supabase-js attache toujours x-client-info (et parfois
+// apikey/x-supabase-api-version) à ses requêtes, y compris vers les Edge
+// Functions appelées via supabase.functions.invoke(). Il faut les autoriser
+// explicitement, sinon le navigateur bloque la requête au stade du
+// preflight CORS avant même qu'elle ne parte.
+const CORS_HEADERS = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers":
+    "authorization, content-type, apikey, x-client-info, x-supabase-api-version",
+};
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
-    return new Response(null, {
-      headers: {
-        "Access-Control-Allow-Origin": "*",
-        "Access-Control-Allow-Headers": "authorization, content-type",
-      },
-    });
+    return new Response(null, { headers: CORS_HEADERS });
   }
 
   try {
     const { space_id, sender_id, title, body, url, tag } = await req.json();
 
     if (!space_id || !sender_id || !title) {
-      return new Response(JSON.stringify({ error: "Paramètres manquants" }), { status: 400 });
+      return new Response(JSON.stringify({ error: "Paramètres manquants" }), {
+        status: 400,
+        headers: { ...CORS_HEADERS, "Content-Type": "application/json" },
+      });
     }
 
     // Récupère les user_ids des membres du space (sauf l'expéditeur)
@@ -36,7 +45,10 @@ Deno.serve(async (req) => {
       .neq("user_id", sender_id);
 
     if (membersErr || !members?.length) {
-      return new Response(JSON.stringify({ sent: 0 }), { status: 200 });
+      return new Response(JSON.stringify({ sent: 0 }), {
+        status: 200,
+        headers: { ...CORS_HEADERS, "Content-Type": "application/json" },
+      });
     }
 
     const recipientIds = members.map((m: { user_id: string }) => m.user_id);
@@ -48,7 +60,10 @@ Deno.serve(async (req) => {
       .in("user_id", recipientIds);
 
     if (subsErr || !subs?.length) {
-      return new Response(JSON.stringify({ sent: 0 }), { status: 200 });
+      return new Response(JSON.stringify({ sent: 0 }), {
+        status: 200,
+        headers: { ...CORS_HEADERS, "Content-Type": "application/json" },
+      });
     }
 
     const payload = JSON.stringify({ title, body, url: url ?? "/", tag: tag ?? "nc" });
@@ -82,9 +97,12 @@ Deno.serve(async (req) => {
 
     return new Response(JSON.stringify({ sent }), {
       status: 200,
-      headers: { "Content-Type": "application/json" },
+      headers: { ...CORS_HEADERS, "Content-Type": "application/json" },
     });
   } catch (err) {
-    return new Response(JSON.stringify({ error: String(err) }), { status: 500 });
+    return new Response(JSON.stringify({ error: String(err) }), {
+      status: 500,
+      headers: { ...CORS_HEADERS, "Content-Type": "application/json" },
+    });
   }
 });

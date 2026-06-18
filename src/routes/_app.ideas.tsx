@@ -3,7 +3,7 @@ import { useState } from "react";
 import { ThumbsUp, ThumbsDown, Plus, Sparkles, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { useActiveSpaceId } from "@/lib/space-context";
-import { useCreateIdea, useIdeas, useSetIdeaStatus, useVoteIdea } from "@/lib/store";
+import { useCreateIdea, useIdeas, useSetIdeaStatus, useSpace, useVoteIdea } from "@/lib/store";
 import type { IdeaStatus } from "@/lib/types";
 
 export const Route = createFileRoute("/_app/ideas")({
@@ -20,10 +20,16 @@ const STATUSES: { value: IdeaStatus; label: string; emoji: string }[] = [
 
 function IdeasPage() {
   const spaceId = useActiveSpaceId();
+  const spaceQuery  = useSpace(spaceId);
   const ideasQuery  = useIdeas(spaceId);
   const createIdea  = useCreateIdea(spaceId);
   const voteIdea    = useVoteIdea(spaceId);
   const setStatus   = useSetIdeaStatus(spaceId);
+
+  // Owner et members promus peuvent proposer une idée. Un member non promu
+  // (ou un observateur) est en lecture seule, comme pour les épisodes.
+  const canPropose =
+    spaceQuery.data?.my_role === "owner" || Boolean(spaceQuery.data?.my_can_create_episodes);
 
   const [title, setTitle] = useState("");
   const [desc,  setDesc]  = useState("");
@@ -70,21 +76,23 @@ function IdeasPage() {
         <p className="text-muted-foreground mt-3">Like, dislike, programme. Démocratie absolue.</p>
       </div>
 
-      <div className="bg-card border border-border rounded-2xl p-5 mb-8 shadow-poster">
-        <h2 className="font-bold mb-3 flex items-center gap-2">
-          <Plus className="w-4 h-4 text-primary" /> Nouvelle idée
-        </h2>
-        <input value={title} onChange={(e) => setTitle(e.target.value)}
-          placeholder="Titre — ex: Cours de salsa raté" maxLength={100}
-          className="w-full bg-input/50 border border-border rounded-lg px-3 py-2 text-sm mb-2" />
-        <textarea value={desc} onChange={(e) => setDesc(e.target.value)}
-          placeholder="Pourquoi ce sera mémorable…" rows={2} maxLength={300}
-          className="w-full bg-input/50 border border-border rounded-lg px-3 py-2 text-sm mb-3" />
-        <button onClick={submit} disabled={!title.trim() || createIdea.isPending}
-          className="bg-primary text-primary-foreground px-4 py-2 rounded-md font-semibold disabled:opacity-30">
-          {createIdea.isPending ? "Envoi…" : "Pitcher"}
-        </button>
-      </div>
+      {canPropose && (
+        <div className="bg-card border border-border rounded-2xl p-5 mb-8 shadow-poster">
+          <h2 className="font-bold mb-3 flex items-center gap-2">
+            <Plus className="w-4 h-4 text-primary" /> Nouvelle idée
+          </h2>
+          <input value={title} onChange={(e) => setTitle(e.target.value)}
+            placeholder="Titre — ex: Cours de salsa raté" maxLength={100}
+            className="w-full bg-input/50 border border-border rounded-lg px-3 py-2 text-sm mb-2" />
+          <textarea value={desc} onChange={(e) => setDesc(e.target.value)}
+            placeholder="Pourquoi ce sera mémorable…" rows={2} maxLength={300}
+            className="w-full bg-input/50 border border-border rounded-lg px-3 py-2 text-sm mb-3" />
+          <button onClick={submit} disabled={!title.trim() || createIdea.isPending}
+            className="bg-primary text-primary-foreground px-4 py-2 rounded-md font-semibold disabled:opacity-30">
+            {createIdea.isPending ? "Envoi…" : "Pitcher"}
+          </button>
+        </div>
+      )}
 
       <div className="flex gap-2 overflow-x-auto scrollbar-hide mb-6">
         {[{ value: "all" as const, label: "Tout", emoji: "✨" }, ...STATUSES].map((s) => (

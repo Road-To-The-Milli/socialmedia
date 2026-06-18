@@ -171,6 +171,14 @@ export interface ReviewsResponse {
   season_unlocked: boolean;
 }
 
+export interface EpisodeReviewStatus {
+  user_id: string;
+  name: string;
+  avatar_url?: string;
+  role: SpaceRole;
+  submitted: boolean;
+}
+
 // ============================================================
 // COMMENTS
 // ============================================================

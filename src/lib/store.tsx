@@ -14,6 +14,7 @@ import type {
   EpisodeDraft,
   EpisodeMedia,
   EpisodeMediaUpload,
+  EpisodeReviewStatus,
   Idea,
   IdeaStatus,
   InviteCode,
@@ -39,6 +40,7 @@ export const queryKeys = {
   spaceInviteCodes:  (id: string)                => ["spaces", id, "invite-codes"]                   as const,
   episodes:          (spaceId: string)           => ["spaces", spaceId, "episodes"]                  as const,
   episodeReviews:    (spaceId: string, epId: string) => ["spaces", spaceId, "episodes", epId, "reviews"]  as const,
+  episodeReviewStatus: (epId: string)               => ["episodes", epId, "review-status"]               as const,
   episodeComments:   (spaceId: string, epId: string) => ["spaces", spaceId, "episodes", epId, "comments"] as const,
   ideas:             (spaceId: string)           => ["spaces", spaceId, "ideas"]                     as const,
   synthese:          (spaceId: string)           => ["spaces", spaceId, "synthese"]                  as const,
@@ -715,6 +717,22 @@ export function useEpisodeReviews(spaceId: string, episodeId: string | undefined
   });
 }
 
+/** Qui (owner/member) a déjà rempli son compte rendu pour cet épisode, sans en révéler le contenu. */
+export function useEpisodeReviewStatus(episodeId: string | undefined) {
+  return useQuery({
+    queryKey: episodeId ? queryKeys.episodeReviewStatus(episodeId) : ["_"],
+    enabled: Boolean(episodeId),
+    staleTime: LIVE_STALE_TIME,
+    queryFn: async (): Promise<EpisodeReviewStatus[]> => {
+      const { data, error } = await supabase.rpc("episode_review_status", {
+        p_episode_id: episodeId!,
+      });
+      if (error) throw error;
+      return (data ?? []) as EpisodeReviewStatus[];
+    },
+  });
+}
+
 export function useSaveReview(spaceId: string, episodeId: string) {
   const qc = useQueryClient();
   return useMutation({
@@ -745,6 +763,7 @@ export function useSaveReview(spaceId: string, episodeId: string) {
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: queryKeys.episodeReviews(spaceId, episodeId) });
       void qc.invalidateQueries({ queryKey: queryKeys.episodes(spaceId) });
+      void qc.invalidateQueries({ queryKey: queryKeys.episodeReviewStatus(episodeId) });
     },
   });
 }

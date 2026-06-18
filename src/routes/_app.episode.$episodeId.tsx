@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from "react";
 import {
   ArrowLeft,
   Calendar,
+  Check,
   Film,
   Heart,
   ImagePlus,
@@ -15,6 +16,7 @@ import {
   Star,
   Trash2,
   Upload,
+  User as UserIcon,
 } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "@/lib/auth";
@@ -24,6 +26,7 @@ import {
   useDeleteEpisode,
   useEpisodeComments,
   useEpisodeReviews,
+  useEpisodeReviewStatus,
   useEpisodes,
   useLikeEpisode,
   useReactToComment,
@@ -37,6 +40,7 @@ import type {
   EpisodeCommentDraft,
   EpisodeMedia,
   EpisodeMediaUpload,
+  EpisodeReviewStatus,
   Review,
   ReviewDraft,
   WouldRedo,
@@ -55,6 +59,7 @@ function EpisodeDetail() {
   const spaceQuery    = useSpace(spaceId);
   const episodesQuery = useEpisodes(spaceId);
   const reviewsQuery  = useEpisodeReviews(spaceId, episodeId);
+  const reviewStatusQuery = useEpisodeReviewStatus(episodeId);
   const commentsQuery = useEpisodeComments(spaceId, episodeId);
   const saveReview    = useSaveReview(spaceId, episodeId);
   const createComment = useCreateEpisodeComment(spaceId, episodeId);
@@ -83,9 +88,11 @@ function EpisodeDetail() {
     ? visibleRatings.reduce((a, b) => a + b, 0) / visibleRatings.length
     : null;
 
-  // Owner et member peuvent uploader des médias et écrire des reviews.
+  // Owner et members promus peuvent participer (review, commentaire, média).
+  // Un member non promu est traité comme un observateur : lecture seule.
   const myRole = spaceQuery.data?.my_role;
-  const canParticipate = myRole === "owner" || myRole === "member";
+  const canParticipate =
+    myRole === "owner" || (myRole === "member" && Boolean(spaceQuery.data?.my_can_create_episodes));
 
   const myReview     = user ? reviews.find((r) => r.author_id === user.id) : undefined;
   const otherReviews = user ? reviews.filter((r) => r.author_id !== user.id) : reviews;
@@ -168,6 +175,10 @@ function EpisodeDetail() {
             )}
           </div>
         </div>
+      </div>
+
+      <div className="max-w-4xl mx-auto px-4 sm:px-6 pt-10">
+        <ReviewStatusChecklist statuses={reviewStatusQuery.data} />
       </div>
 
       <div className="max-w-4xl mx-auto px-4 sm:px-6 py-10 grid md:grid-cols-2 gap-6">
@@ -499,6 +510,41 @@ const empty: ReviewDraft = { rating: 0, favorite_moment: "", awkward_moment: "",
 function reviewToDraft(r?: Review): ReviewDraft {
   if (!r) return empty;
   return { rating: r.rating, favorite_moment: r.favorite_moment, awkward_moment: r.awkward_moment, funny_quote: "", summary: r.summary, would_redo: r.would_redo, song: r.song };
+}
+
+function ReviewStatusChecklist({ statuses }: { statuses?: EpisodeReviewStatus[] }) {
+  if (!statuses || statuses.length === 0) return null;
+
+  return (
+    <div className="bg-card border border-border rounded-xl p-4 shadow-poster">
+      <p className="text-xs uppercase tracking-wider text-muted-foreground mb-3">
+        Comptes rendus
+      </p>
+      <ul className="flex flex-wrap gap-3">
+        {statuses.map((s) => (
+          <li key={s.user_id} className="flex items-center gap-2">
+            <div className="relative size-8 shrink-0 rounded-full overflow-hidden bg-muted flex items-center justify-center border border-border">
+              {s.avatar_url ? (
+                <img src={s.avatar_url} alt="" className="w-full h-full object-cover" />
+              ) : (
+                <UserIcon className="size-4 text-muted-foreground" />
+              )}
+              <span
+                className={`absolute -bottom-0.5 -right-0.5 flex size-4 items-center justify-center rounded-full border-2 border-card ${
+                  s.submitted ? "bg-emerald-500" : "bg-muted-foreground/40"
+                }`}
+              >
+                {s.submitted && <Check className="size-2.5 text-white" />}
+              </span>
+            </div>
+            <span className={`text-sm ${s.submitted ? "text-foreground" : "text-muted-foreground"}`}>
+              {s.name}
+            </span>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
 }
 
 function ReviewPanel({ label, review, editable, saving, onSave }: {
