@@ -31,7 +31,7 @@ interface AuthCtx {
   loading: boolean;
   signUp: (params: SignUpParams) => Promise<SignUpResult>;
   signIn: (email: string, password: string) => Promise<void>;
-  signInWithOAuth: (provider: "google" | "apple", pending?: OAuthPending) => Promise<void>;
+  signInWithOAuth: (provider: "google", pending?: OAuthPending) => Promise<void>;
   signOut: () => Promise<void>;
   refreshUser: () => Promise<void>;
 }
@@ -151,7 +151,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const signInWithOAuth = useCallback(async (
-    provider: "google" | "apple",
+    provider: "google",
     pending?: OAuthPending,
   ) => {
     if (pending?.pendingAdventureName || pending?.pendingInviteCode) {
