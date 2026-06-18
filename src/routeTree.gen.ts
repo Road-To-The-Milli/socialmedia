@@ -18,6 +18,7 @@ import { Route as AppTimelineRouteImport } from './routes/_app.timeline'
 import { Route as AppSettingsRouteImport } from './routes/_app.settings'
 import { Route as AppIdeasRouteImport } from './routes/_app.ideas'
 import { Route as AppEpisodeEpisodeIdRouteImport } from './routes/_app.episode.$episodeId'
+import { Route as AppAdventureSpaceIdRouteImport } from './routes/_app.adventure.$spaceId'
 
 const SignupRoute = SignupRouteImport.update({
   id: '/signup',
@@ -63,6 +64,11 @@ const AppEpisodeEpisodeIdRoute = AppEpisodeEpisodeIdRouteImport.update({
   path: '/episode/$episodeId',
   getParentRoute: () => AppRoute,
 } as any)
+const AppAdventureSpaceIdRoute = AppAdventureSpaceIdRouteImport.update({
+  id: '/adventure/$spaceId',
+  path: '/adventure/$spaceId',
+  getParentRoute: () => AppRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof AppIndexRoute
@@ -72,6 +78,7 @@ export interface FileRoutesByFullPath {
   '/settings': typeof AppSettingsRoute
   '/timeline': typeof AppTimelineRoute
   '/auth/callback': typeof AuthCallbackRoute
+  '/adventure/$spaceId': typeof AppAdventureSpaceIdRoute
   '/episode/$episodeId': typeof AppEpisodeEpisodeIdRoute
 }
 export interface FileRoutesByTo {
@@ -82,6 +89,7 @@ export interface FileRoutesByTo {
   '/timeline': typeof AppTimelineRoute
   '/auth/callback': typeof AuthCallbackRoute
   '/': typeof AppIndexRoute
+  '/adventure/$spaceId': typeof AppAdventureSpaceIdRoute
   '/episode/$episodeId': typeof AppEpisodeEpisodeIdRoute
 }
 export interface FileRoutesById {
@@ -94,6 +102,7 @@ export interface FileRoutesById {
   '/_app/timeline': typeof AppTimelineRoute
   '/auth/callback': typeof AuthCallbackRoute
   '/_app/': typeof AppIndexRoute
+  '/_app/adventure/$spaceId': typeof AppAdventureSpaceIdRoute
   '/_app/episode/$episodeId': typeof AppEpisodeEpisodeIdRoute
 }
 export interface FileRouteTypes {
@@ -106,6 +115,7 @@ export interface FileRouteTypes {
     | '/settings'
     | '/timeline'
     | '/auth/callback'
+    | '/adventure/$spaceId'
     | '/episode/$episodeId'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -116,6 +126,7 @@ export interface FileRouteTypes {
     | '/timeline'
     | '/auth/callback'
     | '/'
+    | '/adventure/$spaceId'
     | '/episode/$episodeId'
   id:
     | '__root__'
@@ -127,6 +138,7 @@ export interface FileRouteTypes {
     | '/_app/timeline'
     | '/auth/callback'
     | '/_app/'
+    | '/_app/adventure/$spaceId'
     | '/_app/episode/$episodeId'
   fileRoutesById: FileRoutesById
 }
@@ -202,6 +214,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppEpisodeEpisodeIdRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/adventure/$spaceId': {
+      id: '/_app/adventure/$spaceId'
+      path: '/adventure/$spaceId'
+      fullPath: '/adventure/$spaceId'
+      preLoaderRoute: typeof AppAdventureSpaceIdRouteImport
+      parentRoute: typeof AppRoute
+    }
   }
 }
 
@@ -210,6 +229,7 @@ interface AppRouteChildren {
   AppSettingsRoute: typeof AppSettingsRoute
   AppTimelineRoute: typeof AppTimelineRoute
   AppIndexRoute: typeof AppIndexRoute
+  AppAdventureSpaceIdRoute: typeof AppAdventureSpaceIdRoute
   AppEpisodeEpisodeIdRoute: typeof AppEpisodeEpisodeIdRoute
 }
 
@@ -218,6 +238,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppSettingsRoute: AppSettingsRoute,
   AppTimelineRoute: AppTimelineRoute,
   AppIndexRoute: AppIndexRoute,
+  AppAdventureSpaceIdRoute: AppAdventureSpaceIdRoute,
   AppEpisodeEpisodeIdRoute: AppEpisodeEpisodeIdRoute,
 }
 

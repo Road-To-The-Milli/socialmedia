@@ -1,11 +1,20 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState } from "react";
-import { Bell, BellOff, Copy, Link2, Loader2, Settings, User as UserIcon } from "lucide-react";
+import {
+  Bell,
+  BellOff,
+  Copy,
+  Link2,
+  Loader2,
+  Settings,
+  User as UserIcon,
+  Users,
+} from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "@/lib/auth";
 import { useActiveSpaceId } from "@/lib/space-context";
 import { supabase } from "@/lib/supabase";
-import { useCreateInviteCode, useSpaceInviteCodes, useUpdateProfile } from "@/lib/store";
+import { useCreateInviteCode, useSpace, useSpaceInviteCodes, useUpdateProfile } from "@/lib/store";
 import { usePush } from "@/hooks/use-push";
 
 export const Route = createFileRoute("/_app/settings")({
@@ -18,8 +27,10 @@ function SettingsPage() {
   const updateProfile = useUpdateProfile();
   const push = usePush();
   const spaceId = useActiveSpaceId();
+  const spaceQuery = useSpace(spaceId || undefined);
   const inviteCodesQuery = useSpaceInviteCodes(spaceId || undefined);
   const createInviteCode = useCreateInviteCode(spaceId);
+  const isOwner = spaceQuery.data?.my_role === "owner";
 
   const [name, setName] = useState(user?.name ?? "");
   const [bio, setBio] = useState(user?.bio ?? "");
@@ -245,6 +256,22 @@ function SettingsPage() {
             {inviteCodesQuery.data?.length ? "Générer un nouveau code" : "Générer un code"}
           </button>
         </div>
+      )}
+
+      {spaceId && isOwner && (
+        <Link
+          to="/adventure/$spaceId"
+          params={{ spaceId }}
+          className="mt-6 flex items-center gap-3 bg-card border border-border rounded-xl p-5 sm:p-6 shadow-poster hover:border-primary transition"
+        >
+          <Users className="size-5 text-primary shrink-0" />
+          <div className="flex-1">
+            <h2 className="text-base font-bold mb-1">Gérer les membres</h2>
+            <p className="text-sm text-muted-foreground">
+              Voir qui suit cette aventure, promouvoir ou retirer un membre.
+            </p>
+          </div>
+        </Link>
       )}
     </div>
   );

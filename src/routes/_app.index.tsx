@@ -301,16 +301,14 @@ function JoinBanner() {
 function AdventureCard({
   space,
   active,
-  onSelect,
 }: {
   space: Space;
   active: boolean;
-  onSelect: () => void;
 }) {
   return (
-    <button
-      type="button"
-      onClick={onSelect}
+    <Link
+      to="/adventure/$spaceId"
+      params={{ spaceId: space.id }}
       className={`relative shrink-0 w-52 rounded-xl overflow-hidden border text-left transition snap-start ${
         active
           ? "border-primary ring-2 ring-primary"
@@ -335,14 +333,14 @@ function AdventureCard({
           {space.member_count ?? 1} membre{(space.member_count ?? 1) > 1 ? "s" : ""}
         </p>
       </div>
-    </button>
+    </Link>
   );
 }
 
 type AdventureTab = "mine" | "friends";
 
 function AdventuresOverview({ spaces }: { spaces: Space[] }) {
-  const { activeSpaceId, setActiveSpaceId } = useActiveSpace();
+  const { activeSpaceId } = useActiveSpace();
   const mine = spaces.filter((s) => s.my_role === "owner");
   const friends = spaces.filter((s) => s.my_role !== "owner");
 
@@ -383,12 +381,7 @@ function AdventuresOverview({ spaces }: { spaces: Space[] }) {
 
       <div className="flex gap-4 overflow-x-auto scrollbar-hide pb-2 snap-x">
         {shown.map((s) => (
-          <AdventureCard
-            key={s.id}
-            space={s}
-            active={s.id === activeSpaceId}
-            onSelect={() => setActiveSpaceId(s.id)}
-          />
+          <AdventureCard key={s.id} space={s} active={s.id === activeSpaceId} />
         ))}
       </div>
     </div>

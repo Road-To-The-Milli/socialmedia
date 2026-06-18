@@ -17,9 +17,10 @@ function Timeline() {
   const { data: episodes, isLoading } = useEpisodes(activeSpaceId);
   const createEpisode = useCreateEpisode(activeSpaceId);
 
-  // Seul le créateur de l'aventure ("mes aventures") peut créer des épisodes.
-  // Les amis qui rejoignent une aventure via un code ne sont là que pour suivre.
-  const canCreateEpisode = spaceQuery.data?.my_role === "owner";
+  // Le créateur de l'aventure ("mes aventures") peut créer des épisodes, ainsi
+  // que les membres que le owner a promus depuis les paramètres de l'espace.
+  const canCreateEpisode =
+    spaceQuery.data?.my_role === "owner" || Boolean(spaceQuery.data?.my_can_create_episodes);
 
   if (isLoading) {
     return (

@@ -42,6 +42,7 @@ export interface Space {
   // Computed / joined fields
   my_role?: SpaceRole;
   member_count?: number;
+  my_can_create_episodes?: boolean;
 }
 
 export interface SpaceMember {
@@ -50,6 +51,7 @@ export interface SpaceMember {
   role: SpaceRole;
   invited_by?: string;
   joined_at: string;
+  can_create_episodes: boolean;
   // Joined from profiles
   profile?: Pick<User, "id" | "name" | "avatar_url">;
 }

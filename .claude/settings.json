@@ -69,7 +69,12 @@
       "Bash(Remove-Item -Recurse -Force node_modules, package-lock.json -ErrorAction SilentlyContinue)",
       "Bash(python -c \"import sys,json; d=json.load\\(sys.stdin\\); print\\('main:', d.get\\('main'\\)\\); print\\('exports:', list\\(d.get\\('exports',{}\\).keys\\(\\)\\)[:5]\\)\")",
       "Bash(xargs grep -l \"createServerFn\\\\|serverOnly\\\\|'use server'\")",
-      "PowerShell(New-Item -ItemType Directory -Force \"d:\\\\Projets\\\\socialmedia\\\\supabase\\\\functions\\\\send-push\")"
+      "PowerShell(New-Item -ItemType Directory -Force \"d:\\\\Projets\\\\socialmedia\\\\supabase\\\\functions\\\\send-push\")",
+      "Bash(xargs grep -l \"export.*function\\\\|export.*const.*=.*async\")",
+      "Bash(npx supabase *)",
+      "Bash(timeout 60 npx vite build)",
+      "Bash(curl -s \"https://pfrvmcozeqkyjunmmcff.supabase.co/rest/v1/space_members?select=*&limit=1\" -H \"apikey: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBmcnZtY296ZXFreWp1bm1tY2ZmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODEyODk2NzAsImV4cCI6MjA5Njg2NTY3MH0.rwG7yU8up2_cp7TD6G9etzvvpDgROVLWB9tG18_ZCBs\" -H \"Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBmcnZtY296ZXFreWp1bm1tY2ZmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODEyODk2NzAsImV4cCI6MjA5Njg2NTY3MH0.rwG7yU8up2_cp7TD6G9etzvvpDgROVLWB9tG18_ZCBs\")",
+      "Bash(curl -s \"https://pfrvmcozeqkyjunmmcff.supabase.co/rest/v1/spaces?select=*,space_members\\(role,user_id,can_create_episodes\\)&limit=1\" -H \"apikey: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBmcnZtY296ZXFreWp1bm1tY2ZmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODEyODk2NzAsImV4cCI6MjA5Njg2NTY3MH0.rwG7yU8up2_cp7TD6G9etzvvpDgROVLWB9tG18_ZCBs\" -H \"Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBmcnZtY296ZXFreWp1bm1tY2ZmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODEyODk2NzAsImV4cCI6MjA5Njg2NTY3MH0.rwG7yU8up2_cp7TD6G9etzvvpDgROVLWB9tG18_ZCBs\")"
     ]
   }
 }

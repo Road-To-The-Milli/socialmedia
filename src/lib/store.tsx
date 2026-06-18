@@ -268,7 +268,7 @@ export function useSpaces(): UseQueryResult<Space[]> {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("spaces")
-        .select("*, space_members(role, user_id)")
+        .select("*, space_members(role, user_id, can_create_episodes)")
         .order("created_at", { ascending: false });
       if (error) throw error;
       return (data ?? [])
@@ -292,6 +292,9 @@ export function useSpaces(): UseQueryResult<Space[]> {
             updated_at: row.updated_at,
             my_role: myMembership.role,
             member_count: (row.space_members ?? []).length,
+            my_can_create_episodes: Boolean(
+              (myMembership as { can_create_episodes?: boolean }).can_create_episodes,
+            ),
           } as Space;
         })
         .filter(Boolean) as Space[];
@@ -309,7 +312,7 @@ export function useSpace(spaceId: string | undefined): UseQueryResult<Space> {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("spaces")
-        .select(`*, space_members(role, user_id)`)
+        .select(`*, space_members(role, user_id, can_create_episodes)`)
         .eq("id", spaceId!)
         .single();
       if (error) throw error;
@@ -330,6 +333,9 @@ export function useSpace(spaceId: string | undefined): UseQueryResult<Space> {
         created_at: data.created_at,
         updated_at: data.updated_at,
         my_role: myMembership?.role,
+        my_can_create_episodes: Boolean(
+          (myMembership as { can_create_episodes?: boolean } | undefined)?.can_create_episodes,
+        ),
       } as Space;
     },
   });
@@ -393,7 +399,7 @@ export function useSpaceMembers(spaceId: string | undefined): UseQueryResult<Spa
     queryFn: async () => {
       const { data, error } = await supabase
         .from("space_members")
-        .select("*, profile:profiles(id, name, avatar_url)")
+        .select("*, profile:profiles!space_members_user_id_fkey(id, name, avatar_url)")
         .eq("space_id", spaceId!)
         .order("joined_at", { ascending: true });
       if (error) throw error;
@@ -403,8 +409,47 @@ export function useSpaceMembers(spaceId: string | undefined): UseQueryResult<Spa
         role: row.role as SpaceMember["role"],
         invited_by: row.invited_by ?? undefined,
         joined_at: row.joined_at,
+        can_create_episodes: Boolean(row.can_create_episodes),
         profile: row.profile ?? undefined,
       })) as SpaceMember[];
+    },
+  });
+}
+
+/** Autorise (ou retire) à un member la possibilité d'ajouter des épisodes (owner uniquement). */
+export function useSetMemberEpisodePermission(spaceId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ userId, canCreate }: { userId: string; canCreate: boolean }) => {
+      const { error } = await supabase.rpc("set_member_episode_permission", {
+        p_space_id: spaceId,
+        p_user_id: userId,
+        p_can_create: canCreate,
+      });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: queryKeys.spaceMembers(spaceId) });
+    },
+  });
+}
+
+/** Retire un membre d'un espace (owner uniquement). */
+export function useRemoveSpaceMember(spaceId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (userId: string) => {
+      const { error } = await supabase
+        .from("space_members")
+        .delete()
+        .eq("space_id", spaceId)
+        .eq("user_id", userId);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: queryKeys.spaceMembers(spaceId) });
+      void qc.invalidateQueries({ queryKey: queryKeys.space(spaceId) });
+      void qc.invalidateQueries({ queryKey: queryKeys.spaces() });
     },
   });
 }
