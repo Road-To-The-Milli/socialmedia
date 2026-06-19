@@ -1,4 +1,4 @@
-import { createFileRoute, Link, notFound } from "@tanstack/react-router";
+import { createFileRoute, Link, notFound, useNavigate } from "@tanstack/react-router";
 import {
   ArrowDown,
   ArrowLeft,
@@ -9,6 +9,7 @@ import {
   Music,
   NotebookPen,
   Plus,
+  Trash2,
   User as UserIcon,
   Users,
   X,
@@ -16,6 +17,7 @@ import {
 import { toast } from "sonner";
 import { useActiveSpace } from "@/lib/space-context";
 import {
+  useDeleteSpace,
   useEpisodes,
   useRemoveSpaceMember,
   useSetMemberEpisodePermission,
@@ -30,6 +32,7 @@ export const Route = createFileRoute("/_app/adventure/$spaceId")({
 
 function AdventureDetail() {
   const { spaceId } = Route.useParams();
+  const navigate = useNavigate();
   const { setActiveSpaceId } = useActiveSpace();
 
   const spaceQuery = useSpace(spaceId);
@@ -37,6 +40,7 @@ function AdventureDetail() {
   const membersQuery = useSpaceMembers(spaceId);
   const setMemberEpisodePermission = useSetMemberEpisodePermission(spaceId);
   const removeMember = useRemoveSpaceMember(spaceId);
+  const deleteSpace = useDeleteSpace();
 
   if (spaceQuery.isLoading) {
     return (
@@ -285,6 +289,46 @@ function AdventureDetail() {
               )}
             </ul>
           )}
+        </section>
+      )}
+
+      {isOwner && (
+        <section className="mt-6 bg-card border border-destructive/30 rounded-xl p-5 sm:p-6 shadow-poster">
+          <h2 className="text-base font-bold mb-1 flex items-center gap-2 text-destructive">
+            <Trash2 className="size-4" /> Supprimer l'aventure
+          </h2>
+          <p className="text-sm text-muted-foreground mb-4">
+            Cette action est définitive : tous les épisodes, idées et membres de cette aventure
+            seront supprimés.
+          </p>
+          <button
+            type="button"
+            disabled={deleteSpace.isPending}
+            onClick={() => {
+              if (
+                !window.confirm(
+                  `Supprimer définitivement l'aventure "${space.name}" ? Cette action est irréversible.`,
+                )
+              )
+                return;
+              deleteSpace.mutate(spaceId, {
+                onSuccess: () => {
+                  toast.success("Aventure supprimée");
+                  void navigate({ to: "/" });
+                },
+                onError: (err) =>
+                  toast.error(err instanceof Error ? err.message : "Action impossible."),
+              });
+            }}
+            className="inline-flex items-center gap-2 rounded-md border border-destructive bg-destructive/10 px-4 py-2 text-sm font-semibold text-destructive transition hover:bg-destructive/20 disabled:opacity-40"
+          >
+            {deleteSpace.isPending ? (
+              <Loader2 className="size-4 animate-spin" />
+            ) : (
+              <Trash2 className="size-4" />
+            )}
+            Supprimer l'aventure
+          </button>
         </section>
       )}
     </div>

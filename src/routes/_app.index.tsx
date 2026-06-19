@@ -1,6 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import {
   ArrowLeft,
+  Calendar as CalendarIcon,
   Compass,
   Flame,
   Info,
@@ -19,6 +20,9 @@ import { useActiveSpaceId } from "@/lib/space-context";
 import { useCreateSpace, useEpisodes, useIdeas, useJoinSpace, useSpaces } from "@/lib/store";
 import type { Space } from "@/lib/types";
 import { EpisodeCard } from "@/components/EpisodeCard";
+import { Calendar } from "@/components/ui/calendar";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 
 export const Route = createFileRoute("/_app/")({
   head: () => ({ meta: [{ title: "Nous & Chill" }] }),
@@ -81,25 +85,76 @@ function WelcomeScreen() {
   );
 }
 
+type CreateStep = "name" | "end-date";
+
 function CreateAdventureScreen({ onBack }: { onBack: () => void }) {
+  return (
+    <div className="min-h-[80vh] flex flex-col items-center justify-center px-6">
+      <CreateAdventureFlow onBack={onBack} />
+    </div>
+  );
+}
+
+function CreateAdventureDialog({
+  open,
+  onOpenChange,
+}: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+}) {
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="flex flex-col items-center sm:max-w-md">
+        <DialogTitle className="sr-only">Créer une aventure</DialogTitle>
+        <CreateAdventureFlow
+          onBack={() => onOpenChange(false)}
+          onCreated={() => onOpenChange(false)}
+        />
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function CreateAdventureFlow({
+  onBack,
+  onCreated,
+}: {
+  onBack: () => void;
+  onCreated?: () => void;
+}) {
+  const [step, setStep] = useState<CreateStep>("name");
   const [name, setName] = useState("");
+  const [endDate, setEndDate] = useState<Date | undefined>(undefined);
+  const [calendarOpen, setCalendarOpen] = useState(false);
   const createSpace = useCreateSpace();
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleNameSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    if (!name.trim()) return;
+    setStep("end-date");
+  };
+
+  const submit = (date: Date | undefined) => {
     const trimmed = name.trim();
     if (!trimmed) return;
     createSpace.mutate(
-      { name: trimmed, type: "other" },
       {
-        onSuccess: () => toast.success("Aventure créée !"),
+        name: trimmed,
+        type: "other",
+        season_end: date ? toDateInputValue(date) : undefined,
+      },
+      {
+        onSuccess: () => {
+          toast.success("Aventure créée !");
+          onCreated?.();
+        },
         onError: () => toast.error("Impossible de créer l'aventure."),
       },
     );
   };
 
-  return (
-    <div className="min-h-[80vh] flex flex-col items-center justify-center px-6">
+  if (step === "name") {
+    return (
       <div className="w-full max-w-sm">
         <button
           type="button"
@@ -119,7 +174,7 @@ function CreateAdventureScreen({ onBack }: { onBack: () => void }) {
           Un code unique sera généré automatiquement pour inviter tes amis.
         </p>
 
-        <form onSubmit={handleSubmit} className="flex flex-col gap-3">
+        <form onSubmit={handleNameSubmit} className="flex flex-col gap-3">
           <input
             type="text"
             value={name}
@@ -130,20 +185,98 @@ function CreateAdventureScreen({ onBack }: { onBack: () => void }) {
           />
           <button
             type="submit"
-            disabled={!name.trim() || createSpace.isPending}
+            disabled={!name.trim()}
             className="inline-flex items-center justify-center gap-2 bg-primary text-primary-foreground px-6 py-3 rounded-md font-bold disabled:opacity-40"
           >
-            {createSpace.isPending ? (
-              <Loader2 className="size-4 animate-spin" />
-            ) : (
-              <PlusCircle className="size-4" />
-            )}
-            Créer l'aventure
+            Continuer
           </button>
         </form>
       </div>
+    );
+  }
+
+  return (
+    <div className="w-full max-w-sm">
+      <button
+        type="button"
+        onClick={() => setStep("name")}
+        className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground mb-8 transition"
+      >
+        <ArrowLeft className="size-4" /> Retour
+      </button>
+
+      <p className="text-xs uppercase tracking-[0.3em] text-primary font-bold mb-3 text-center">
+        Nouvelle aventure
+      </p>
+      <h2 className="text-3xl font-black tracking-tighter mb-2 text-center">
+        Quand se termine "{name.trim()}" ?
+      </h2>
+      <p className="text-muted-foreground text-sm text-center mb-8">
+        Choisis une date de fin pour ton aventure. Tu peux passer cette étape si tu ne sais pas
+        encore.
+      </p>
+
+      <div className="flex flex-col gap-3">
+        <Popover open={calendarOpen} onOpenChange={setCalendarOpen}>
+          <PopoverTrigger asChild>
+            <button
+              type="button"
+              className="w-full flex items-center gap-2 bg-input/50 border border-border rounded-lg px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+            >
+              <CalendarIcon className="size-4 text-muted-foreground" />
+              {endDate ? (
+                <span>{endDate.toLocaleDateString("fr-FR")}</span>
+              ) : (
+                <span className="text-muted-foreground">Sélectionner une date de fin</span>
+              )}
+            </button>
+          </PopoverTrigger>
+          <PopoverContent className="w-auto p-0" align="center">
+            <Calendar
+              mode="single"
+              selected={endDate}
+              onSelect={(date) => {
+                setEndDate(date);
+                setCalendarOpen(false);
+              }}
+              disabled={{ before: new Date() }}
+              autoFocus
+            />
+          </PopoverContent>
+        </Popover>
+
+        <button
+          type="button"
+          onClick={() => submit(endDate)}
+          disabled={createSpace.isPending}
+          className="inline-flex items-center justify-center gap-2 bg-primary text-primary-foreground px-6 py-3 rounded-md font-bold disabled:opacity-40"
+        >
+          {createSpace.isPending ? (
+            <Loader2 className="size-4 animate-spin" />
+          ) : (
+            <PlusCircle className="size-4" />
+          )}
+          Créer l'aventure
+        </button>
+
+        <button
+          type="button"
+          onClick={() => submit(undefined)}
+          disabled={createSpace.isPending}
+          className="text-sm text-muted-foreground hover:text-foreground transition disabled:opacity-40"
+        >
+          {endDate ? "Passer cette étape" : "Décider plus tard"}
+        </button>
+      </div>
     </div>
   );
+}
+
+function toDateInputValue(date: Date): string {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
 }
 
 function JoinAdventureScreen({ onBack }: { onBack: () => void }) {
@@ -322,6 +455,19 @@ function AdventureCard({ space }: { space: Space }) {
   );
 }
 
+function CreateAdventureCard({ onClick }: { onClick: () => void }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="shrink-0 w-52 h-36 rounded-xl border-2 border-dashed border-border hover:border-primary text-muted-foreground hover:text-primary flex flex-col items-center justify-center gap-2 transition snap-start"
+    >
+      <Plus className="size-6" />
+      <span className="text-sm font-semibold">Créer une aventure</span>
+    </button>
+  );
+}
+
 type AdventureTab = "mine" | "friends";
 
 function AdventuresOverview({ spaces }: { spaces: Space[] }) {
@@ -329,6 +475,7 @@ function AdventuresOverview({ spaces }: { spaces: Space[] }) {
   const friends = spaces.filter((s) => s.my_role !== "owner");
 
   const [tab, setTab] = useState<AdventureTab>(mine.length ? "mine" : "friends");
+  const [createOpen, setCreateOpen] = useState(false);
 
   if (!mine.length && !friends.length) return null;
 
@@ -340,8 +487,7 @@ function AdventuresOverview({ spaces }: { spaces: Space[] }) {
         <button
           type="button"
           onClick={() => setTab("mine")}
-          disabled={!mine.length}
-          className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-semibold transition disabled:opacity-30 disabled:cursor-not-allowed ${
+          className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-semibold transition ${
             tab === "mine"
               ? "bg-card text-foreground shadow-sm"
               : "text-muted-foreground hover:text-foreground"
@@ -367,7 +513,10 @@ function AdventuresOverview({ spaces }: { spaces: Space[] }) {
         {shown.map((s) => (
           <AdventureCard key={s.id} space={s} />
         ))}
+        {tab === "mine" && <CreateAdventureCard onClick={() => setCreateOpen(true)} />}
       </div>
+
+      <CreateAdventureDialog open={createOpen} onOpenChange={setCreateOpen} />
     </div>
   );
 }

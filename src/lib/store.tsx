@@ -456,6 +456,20 @@ export function useRemoveSpaceMember(spaceId: string) {
   });
 }
 
+/** Supprime une aventure définitivement (owner uniquement). */
+export function useDeleteSpace() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (spaceId: string) => {
+      const { error } = await supabase.from("spaces").delete().eq("id", spaceId);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: queryKeys.spaces() });
+    },
+  });
+}
+
 /** Codes d'invitation d'un espace. */
 export function useSpaceInviteCodes(spaceId: string | undefined): UseQueryResult<InviteCode[]> {
   return useQuery({
