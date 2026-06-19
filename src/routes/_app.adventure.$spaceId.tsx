@@ -4,6 +4,8 @@ import {
   ArrowLeft,
   ArrowUp,
   Calendar,
+  Copy,
+  Link2,
   Loader2,
   MapPin,
   Music,
@@ -17,11 +19,13 @@ import {
 import { toast } from "sonner";
 import { useActiveSpace } from "@/lib/space-context";
 import {
+  useCreateInviteCode,
   useDeleteSpace,
   useEpisodes,
   useRemoveSpaceMember,
   useSetMemberEpisodePermission,
   useSpace,
+  useSpaceInviteCodes,
   useSpaceMembers,
 } from "@/lib/store";
 
@@ -41,6 +45,8 @@ function AdventureDetail() {
   const setMemberEpisodePermission = useSetMemberEpisodePermission(spaceId);
   const removeMember = useRemoveSpaceMember(spaceId);
   const deleteSpace = useDeleteSpace();
+  const inviteCodesQuery = useSpaceInviteCodes(spaceId);
+  const createInviteCode = useCreateInviteCode(spaceId);
 
   if (spaceQuery.isLoading) {
     return (
@@ -169,6 +175,62 @@ function AdventureDetail() {
           </div>
         )}
       </section>
+
+      {isOwner && (
+        <section className="mb-6 bg-card border border-border rounded-xl p-5 sm:p-6 shadow-poster">
+          <h2 className="text-base font-bold mb-1 flex items-center gap-2">
+            <Link2 className="size-4" /> Code d'invitation
+          </h2>
+          <p className="text-sm text-muted-foreground mb-4">
+            Partage ce code pour inviter quelqu'un à rejoindre uniquement "{space.name}".
+          </p>
+
+          {inviteCodesQuery.data && inviteCodesQuery.data.length > 0 ? (
+            <div className="flex items-center gap-3 mb-4">
+              <div className="flex-1 bg-input/50 border border-border rounded-lg px-4 py-3 font-mono text-lg font-bold tracking-[0.2em] text-primary select-all">
+                {inviteCodesQuery.data[0].code}
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  navigator.clipboard.writeText(inviteCodesQuery.data![0].code);
+                  toast.success("Code copié !");
+                }}
+                className="shrink-0 inline-flex items-center gap-2 bg-secondary hover:bg-secondary/80 px-4 py-3 rounded-lg text-sm font-semibold transition"
+              >
+                <Copy className="size-4" /> Copier
+              </button>
+            </div>
+          ) : (
+            <p className="text-sm text-muted-foreground mb-4 italic">
+              Aucun code généré pour cette aventure.
+            </p>
+          )}
+
+          <button
+            type="button"
+            disabled={createInviteCode.isPending}
+            onClick={() =>
+              createInviteCode.mutate(
+                { role: "member" },
+                {
+                  onSuccess: () => toast.success("Nouveau code généré !"),
+                  onError: (err) =>
+                    toast.error(err instanceof Error ? err.message : "Action impossible."),
+                },
+              )
+            }
+            className="inline-flex items-center gap-2 bg-secondary hover:bg-secondary/80 px-4 py-2 rounded-md text-sm font-semibold transition disabled:opacity-40"
+          >
+            {createInviteCode.isPending ? (
+              <Loader2 className="size-4 animate-spin" />
+            ) : (
+              <Link2 className="size-4" />
+            )}
+            {inviteCodesQuery.data?.length ? "Générer un nouveau code" : "Générer un code"}
+          </button>
+        </section>
+      )}
 
       {isOwner && (
         <section className="bg-card border border-border rounded-xl p-5 sm:p-6 shadow-poster">
