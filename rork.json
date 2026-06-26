@@ -1,0 +1,15 @@
+{
+  "$schema": "https://rork.com/schema/rork.json",
+  "apps": [
+    {
+      "name": "Gather",
+      "path": "expo",
+      "framework": "react-native"
+    },
+    {
+      "name": "Gather",
+      "path": "ios",
+      "framework": "swift"
+    }
+  ]
+}
