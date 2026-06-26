@@ -361,7 +361,11 @@ export function useCreateSpace() {
 
       // Génère automatiquement un code d'invitation pour l'espace créé.
       const userId = await currentUserId();
-      const code = Math.random().toString(36).slice(2, 10).toUpperCase();
+      const code = Array.from(crypto.getRandomValues(new Uint8Array(6)))
+        .map(b => b.toString(36).padStart(2, "0"))
+        .join("")
+        .slice(0, 8)
+        .toUpperCase();
       await supabase.from("invite_codes").insert({
         code,
         space_id: spaceId,
@@ -505,7 +509,11 @@ export function useCreateInviteCode(spaceId: string) {
     mutationFn: async (draft: CreateInviteCodeDraft) => {
       const userId = await currentUserId();
       // Génère un code alphanumérique de 8 caractères en majuscules.
-      const code = Math.random().toString(36).slice(2, 10).toUpperCase();
+      const code = Array.from(crypto.getRandomValues(new Uint8Array(6)))
+        .map(b => b.toString(36).padStart(2, "0"))
+        .join("")
+        .slice(0, 8)
+        .toUpperCase();
       const { data, error } = await supabase
         .from("invite_codes")
         .insert({

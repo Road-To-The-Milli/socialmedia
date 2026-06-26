@@ -509,7 +509,7 @@ const empty: ReviewDraft = { rating: 0, favorite_moment: "", awkward_moment: "",
 
 function reviewToDraft(r?: Review): ReviewDraft {
   if (!r) return empty;
-  return { rating: r.rating, favorite_moment: r.favorite_moment, awkward_moment: r.awkward_moment, funny_quote: "", summary: r.summary, would_redo: r.would_redo, song: r.song };
+  return { rating: r.rating, favorite_moment: r.favorite_moment, awkward_moment: r.awkward_moment, funny_quote: r.funny_quote, summary: r.summary, would_redo: r.would_redo, song: r.song };
 }
 
 function ReviewStatusChecklist({ statuses }: { statuses?: EpisodeReviewStatus[] }) {
@@ -590,6 +590,7 @@ function ReviewPanel({ label, review, editable, saving, onSave }: {
         <Stars value={displayedReview.rating} />
         <Field label="Moment préféré">{displayedReview.favorite_moment}</Field>
         <Field label="Moment gênant">{displayedReview.awkward_moment}</Field>
+        {displayedReview.funny_quote && <Field label="Citation drôle">{displayedReview.funny_quote}</Field>}
         <Field label="Note de bas de page" large>{displayedReview.summary}</Field>
         <Field label="On le referait ?">
           {displayedReview.would_redo
@@ -619,6 +620,7 @@ function ReviewPanel({ label, review, editable, saving, onSave }: {
       <Stars value={draft.rating} editable onChange={(v) => setDraft({ ...draft, rating: v })} />
       <Input label="Moment préféré" value={draft.favorite_moment} onChange={(v) => setDraft({ ...draft, favorite_moment: v })} />
       <Input label="Moment gênant" value={draft.awkward_moment} onChange={(v) => setDraft({ ...draft, awkward_moment: v })} />
+      <Input label="Citation drôle" value={draft.funny_quote} onChange={(v) => setDraft({ ...draft, funny_quote: v })} placeholder="La phrase mémorable de la soirée…" />
 
       <label className="block text-xs uppercase tracking-wider text-muted-foreground mb-1 mt-3">On le referait ?</label>
       <div className="flex gap-2 mb-3">
@@ -645,6 +647,10 @@ function ReviewPanel({ label, review, editable, saving, onSave }: {
       <div className="flex gap-2 mt-4">
         <button
           onClick={async () => {
+            if (!draft.rating || draft.rating < 1) {
+              toast.error("Donne une note avant d'enregistrer (1 à 5 étoiles).");
+              return;
+            }
             try {
               const nextReview = await onSave(draft);
               setSavedReview(nextReview);

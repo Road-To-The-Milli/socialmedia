@@ -28,9 +28,12 @@ Un utilisateur appartenant à un espace avec un rôle précis.
 
 | Rôle | Accès |
 |---|---|
-| `owner` | Crée l'espace, invite des membres, gère les épisodes, peut fermer la saison |
-| `member` | Poste des reviews, commente, vote sur les idées, propose des idées |
-| `observer` | Lit le contenu public (épisodes, commentaires), réagit, mais ne rédige pas de review |
+| `owner` | Crée l'espace, invite des membres, gère les épisodes, peut fermer la saison, promeut des members |
+| `member` (promu) | Crée des épisodes, uploade des médias, rédige des reviews, commente, propose des idées |
+| `member` (non promu) | Traité comme un `observer` : ne peut pas participer activement tant que le owner ne l'a pas promu |
+| `observer` | Lit le contenu public (épisodes, commentaires), réagit, mais ne participe pas |
+
+**Promotion des membres :** par défaut, un `member` qui rejoint l'espace ne peut pas participer (comme un `observer`). Le owner doit explicitement lui accorder le droit de participer (`can_create_episodes` sur `space_members`) via la RPC `set_member_episode_permission`. Ce modèle évite que des invités passifs créent du contenu sans engagement réel dans la saison.
 
 ### Épisode (`episode`)
 Un moment vécu par le groupe. Un épisode a un titre, une date, un lieu, une durée, des médias (photos/vidéos) et des tags.
@@ -78,6 +81,8 @@ space_members
   space_id  uuid → spaces
   user_id   uuid → profiles
   role      text CHECK ('owner','member','observer')
+  can_create_episodes boolean default false  (promotion d'un member par le owner)
+  invited_by uuid → profiles
   joined_at timestamptz
   PK (space_id, user_id)
 
@@ -201,7 +206,33 @@ synthese
   avg_rating     numeric
   best_episode_id uuid → episodes
   video_url      text  (URL de la vidéo souvenir générée)
+
+notifications
+  id         uuid PK
+  user_id    uuid → profiles
+  space_id   uuid → spaces (nullable)
+  title      text
+  body       text
+  url        text
+  read_at    timestamptz (nullable)
+  created_at timestamptz
+
+push_subscriptions
+  id         uuid PK
+  user_id    uuid → auth.users
+  endpoint   text
+  p256dh     text
+  auth       text
+  created_at timestamptz
+  UNIQUE (user_id, endpoint)
 ```
+
+### Fonctions RPC notables
+
+- `notify_space(space_id, title, body, url)` — crée une notification in-app pour chaque membre de l'espace (sauf l'expéditeur). Appelée en plus du push web à chaque événement notable (nouvel épisode, commentaire, idée...).
+- `set_member_episode_permission(space_id, user_id, can_create)` — réservée au owner, promeut ou rétrograde un member.
+- `my_is_contributor(space_id)` — helper RLS : vrai si l'utilisateur est owner ou member promu.
+- `episode_review_status(episode_id)` — indique qui a déjà rendu sa review (oui/non) sans jamais exposer le contenu avant l'unlock de la saison.
 
 ### Règles de confidentialité (RLS)
 
@@ -256,24 +287,21 @@ create policy "reviews_select" on reviews
 ## Pages de l'application
 
 ```
-/                          → Landing / liste des espaces de l'utilisateur
-/auth/login                → Connexion
-/auth/signup               → Inscription (avec ou sans code d'invitation)
-/auth/callback             → Callback magic link (optionnel)
+/                          → Liste des espaces de l'utilisateur (+ création d'espace en modal)
+/login                     → Connexion
+/signup                    → Inscription (avec ou sans code d'invitation)
+/auth/callback             → Callback magic link
 
-/spaces/new                → Créer un espace
-
-/:spaceSlug/               → Dashboard de l'espace (épisodes en vedette)
-/:spaceSlug/episodes       → Liste de tous les épisodes
-/:spaceSlug/episodes/:id   → Détail d'un épisode (médias, reviews, commentaires)
-/:spaceSlug/timeline       → Vue chronologique de la saison
-/:spaceSlug/ideas          → Idées & votes du groupe
-/:spaceSlug/season         → Bilan de saison (locked ou unlocked)
-/:spaceSlug/members        → Liste des membres + gestion des invitations
-/:spaceSlug/settings       → Paramètres de l'espace (owner only)
-
-/profile                   → Profil utilisateur, liste de tous ses espaces
+/adventure/$spaceId        → Dashboard de l'espace : épisodes, gestion des membres
+                             (invitations, promotion), bilan de saison
+/episode/$episodeId        → Détail d'un épisode (médias, reviews, commentaires,
+                             statut "qui a rendu sa review")
+/timeline                  → Création d'épisode + vue chronologique
+/ideas                     → Idées & votes du groupe
+/settings                  → Paramètres utilisateur (profil inclus) + notifications push
 ```
+
+Remarque : il n'y a pas (encore) de routing par `spaceSlug` ni de pages dédiées `/members`, `/season` ou `/profile` — ces écrans sont actuellement regroupés dans `/adventure/$spaceId` et `/settings`.
 
 ---
 
@@ -298,23 +326,27 @@ create policy "reviews_select" on reviews
 ## Roadmap
 
 ### Phase 1 — Multi-espaces (refacto structurelle)
-- [ ] Nouveau schéma Supabase avec `spaces` et `space_members`
-- [ ] Authentification propre (email + password, inscription avec/sans code)
-- [ ] CRUD espaces : créer, modifier, inviter des membres
-- [ ] Associer tous les épisodes/reviews/idées à un `space_id`
-- [ ] RLS multi-espaces
-- [ ] Page dashboard par espace
-- [ ] Page liste des espaces de l'utilisateur
+- [x] Nouveau schéma Supabase avec `spaces` et `space_members`
+- [x] Authentification propre (email + password, inscription avec/sans code)
+- [x] CRUD espaces : créer, modifier, inviter des membres (codes d'invitation)
+- [x] Associer tous les épisodes/reviews/idées à un `space_id`
+- [x] RLS multi-espaces
+- [x] Page dashboard par espace (`/adventure/$spaceId`)
+- [x] Page liste des espaces de l'utilisateur (`/`)
 
 ### Phase 2 — Expérience de groupe
-- [ ] Upload médias par n'importe quel member (pas seulement owner)
-- [ ] Observateurs : accès lecture seule sans review
-- [ ] Notifications (nouveau épisode, review complète, fin de saison imminente)
+- [x] Promotion des members : un owner peut accorder le droit de participer
+      (créer épisode, review, commentaire, idée, média) à un member non-owner
+- [x] Observateurs : accès lecture seule sans review (et members non promus traités pareil)
+- [x] Notifications in-app (table `notifications` + RPC `notify_space`) et push web
+      (`push_subscriptions`)
 - [ ] Gamification : streaks, badges, stats de participation
 
 ### Phase 3 — Révélation & vidéo souvenir
-- [ ] Unlock de saison (automatique à la date ou manuel)
-- [ ] Synthèse IA (bilan de saison en markdown via Claude)
+- [ ] Unlock de saison (automatique à la date ou manuel) — `season_unlocked` existe en DB,
+      logique de bascule automatique à vérifier
+- [ ] Synthèse IA (bilan de saison en markdown via Claude) — table `synthese` créée,
+      génération pas encore implémentée
 - [ ] Vidéo souvenir auto-générée à partir des médias de la saison
 - [ ] Export et partage de la vidéo
 
